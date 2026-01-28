@@ -232,9 +232,11 @@ export const api = {
 
     const today = getLocalDateString();
     
+    // Filter videos that are assigned
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
-    return assignedVideos.map(video => {
+    // MAP AND SORT BY NUMERO_ORDEN TO ENSURE CORRECT DISPLAY
+    const mapped = assignedVideos.map(video => {
         const todaysLog = logs.find(l => 
             String(l.patient_id) === String(patientId) && 
             String(l.video_id) === String(video.id) && 
@@ -251,6 +253,9 @@ export const api = {
             last_completed_at: todaysLog?.timestamp
         };
     });
+
+    // STRICT SORTING
+    return mapped.sort((a, b) => a.video.numero_orden - b.video.numero_orden);
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
