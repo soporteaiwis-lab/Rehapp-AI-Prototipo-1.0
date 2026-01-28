@@ -14,16 +14,112 @@ export const getLocalDateString = (): string => {
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
 
-// MOCK DATA FOR VIDEOS - Updated with Estimated Duration for Volume Calculation (PDF requires 60 min total)
+// VIDEOS REALES SOLICITADOS (ORDEN Y TITULOS CORREGIDOS)
 export const MOCK_VIDEOS: ExerciseVideo[] = [
-  { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: 'Ejercicio básico de fuerza', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 5 },
-  { id: 'v2', numero_orden: 2, titulo: 'Remo con Banda Elástica', descripcion: 'Ejercicio de espalda y postura', youtube_video_id: 'J3VFboUbubo', tipo_ejercicio: 'resistencia', grupos_musculares: ['dorsal', 'trapecio'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica'], nivel_dificultad: 'intermedio', duracion_estimada_minutos: 6 },
-  { id: 'v3', numero_orden: 3, titulo: 'Pararse y Sentarse', descripcion: 'Ejercicio funcional clásico', youtube_video_id: 'gWdgSzPrncU', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 8-12 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 5 },
-  { id: 'v4', numero_orden: 4, titulo: 'Extensión de Glúteo', descripcion: 'Fortalecimiento posterior', youtube_video_id: 'G00dG-33QqA', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['gluteos'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'intermedio', duracion_estimada_minutos: 4 },
-  { id: 'v5', numero_orden: 5, titulo: 'Extensión de Cuádriceps (V1)', descripcion: 'Versión básica', youtube_video_id: 'pX7DEPwYXEE', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 4 },
-  { id: 'v6', numero_orden: 6, titulo: 'Extensión de Cuádriceps (V2)', descripcion: 'Versión con peso', youtube_video_id: 'zEa1Eq3yIsw', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['tobilleras', 'silla'], nivel_dificultad: 'intermedio', duracion_estimada_minutos: 5 },
-  { id: 'v7', numero_orden: 7, titulo: 'Elevación de Talones', descripcion: 'Para pantorrillas y retorno venoso', youtube_video_id: '0caP82ZUo1I', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['pantorrillas'], repeticiones_sugeridas: '2-3 series • 15-20 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 3 },
-  { id: 'v8', numero_orden: 8, titulo: 'Curl de Bíceps', descripcion: 'Fuerza de brazos', youtube_video_id: '-FNnffnCPxE', tipo_ejercicio: 'resistencia', grupos_musculares: ['biceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'mancuernas'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 4 },
+  { 
+    id: 'v1', 
+    numero_orden: 1, 
+    titulo: 'Variante Pararse y Sentarse', 
+    descripcion: 'Ejercicio fundamental para fortalecer piernas y glúteos de forma segura.', 
+    youtube_video_id: 'O7oFiCMN25E', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['cuadriceps', 'gluteos'], 
+    repeticiones_sugeridas: '2-3 series • 8-15 reps', 
+    equipamiento_necesario: ['silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 5 
+  },
+  { 
+    id: 'v2', 
+    numero_orden: 2, 
+    titulo: 'Remo con Banda Elástica', 
+    descripcion: 'Fortalecimiento de espalda para mejorar postura.', 
+    youtube_video_id: 'J3VFboUbubo', 
+    tipo_ejercicio: 'resistencia', 
+    grupos_musculares: ['dorsal', 'trapecio'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica'], 
+    nivel_dificultad: 'intermedio', 
+    duracion_estimada_minutos: 6 
+  },
+  { 
+    id: 'v3', 
+    numero_orden: 3, 
+    titulo: 'Pararse y Sentarse', 
+    descripcion: 'Ejercicio funcional clásico sin apoyo de brazos si es posible.', 
+    youtube_video_id: 'gWdgSzPrncU', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['cuadriceps'], 
+    repeticiones_sugeridas: '2-3 series • 8-12 reps', 
+    equipamiento_necesario: ['silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 5 
+  },
+  { 
+    id: 'v4', 
+    numero_orden: 4, 
+    titulo: 'Extensión de Glúteo (V1)', 
+    descripcion: 'Fortalecimiento de la cadera posterior.', 
+    youtube_video_id: 'G00dG-33QqA', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['gluteos'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica', 'silla'], 
+    nivel_dificultad: 'intermedio', 
+    duracion_estimada_minutos: 4 
+  },
+  { 
+    id: 'v5', 
+    numero_orden: 5, 
+    titulo: 'Extensión de Glúteo (V2)', 
+    descripcion: 'Variante enfocada en control muscular.', 
+    youtube_video_id: 'pX7DEPwYXEE', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['gluteos', 'cuadriceps'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica', 'silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 4 
+  },
+  { 
+    id: 'v6', 
+    numero_orden: 6, 
+    titulo: 'Extensión de Cuádriceps', 
+    descripcion: 'Fortalecimiento de muslos con peso adicional.', 
+    youtube_video_id: 'zEa1Eq3yIsw', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['cuadriceps'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['tobilleras', 'silla'], 
+    nivel_dificultad: 'intermedio', 
+    duracion_estimada_minutos: 5 
+  },
+  { 
+    id: 'v7', 
+    numero_orden: 7, 
+    titulo: 'Elevación de Talones', 
+    descripcion: 'Clave para el retorno venoso y fuerza de pantorrillas.', 
+    youtube_video_id: '0caP82ZUo1I', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['pantorrillas'], 
+    repeticiones_sugeridas: '2-3 series • 15-20 reps', 
+    equipamiento_necesario: ['silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 3 
+  },
+  { 
+    id: 'v8', 
+    numero_orden: 8, 
+    titulo: 'Curl Bíceps (flexión de codo)', 
+    descripcion: 'Fortalecimiento de brazos para actividades diarias.', 
+    youtube_video_id: '-FNnffnCPxE', 
+    tipo_ejercicio: 'resistencia', 
+    grupos_musculares: ['biceps'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica', 'mancuernas'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 4 
+  },
 ];
 
 const LOGS_KEY = 'rehapp_exercise_logs';
