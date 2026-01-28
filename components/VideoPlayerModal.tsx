@@ -27,7 +27,8 @@ export const VideoPlayerModal: React.FC<Props> = ({ video, onClose, onComplete }
   const getEmbedUrl = (videoId: string) => `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0`;
 
   return (
-    <div className="fixed inset-0 bg-white z-[9999] flex flex-col h-dvh w-full overflow-hidden">
+    /* USO DE h-[100dvh] para asegurar altura dinámica real en móviles */
+    <div className="fixed inset-0 bg-white z-[9999] flex flex-col h-[100dvh] w-full overflow-hidden">
       {/* HEADER */}
       <div className="flex justify-between items-center p-3 sm:p-4 bg-white border-b shrink-0">
         <button 

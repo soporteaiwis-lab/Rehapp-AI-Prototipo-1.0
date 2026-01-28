@@ -3,6 +3,13 @@ import { Role, User, WalkSession } from '../types';
 const USERS_KEY = 'rehapp_users_db';
 const SESSION_KEY = 'rehapp_sessions';
 
+/*
+  ADVERTENCIA IMPORTANTE PARA EL USUARIO:
+  Este servicio utiliza 'localStorage'. Los datos se guardan SOLO en el dispositivo actual.
+  Si ingresa en el celular, no verá los datos del PC y viceversa.
+  Para sincronización real, se debe configurar la conexión a Supabase en 'supabase-config.js'.
+*/
+
 // 1. Initial Seed Data (Only used if DB is empty)
 const INITIAL_USERS: User[] = [
   { id: '12345678', name: 'Paciente Pruebas', role: Role.PATIENT, age: 75, condition: 'EAP Moderada', dailyStepGoal: 4500 },
