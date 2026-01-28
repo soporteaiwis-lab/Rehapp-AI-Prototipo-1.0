@@ -3,7 +3,6 @@ import { User, Role, WalkSession, PainResponse, Recipe, PatientSummary, Exercise
 import { storageService } from './storageService';
 
 // Initialize Gemini
-// Note: In a real production app, this call happens on the Node.js server, not the client.
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-3-flash-preview';
 
@@ -28,41 +27,30 @@ const ASSIGNMENTS_KEY = 'rehapp_assignments';
  */
 export const api = {
 
-  /**
-   * ENDPOINT 1: POST /api/activity/start
-   */
   startActivity: async (patientId: string, tipoActividad: string) => {
-    // Simulate server latency
     await new Promise(r => setTimeout(r, 500));
-
     return {
       session_id: Date.now().toString(),
-      meta_pasos: 4500, // This would come from treatment_plans table
-      mensaje_inicio: "¡Excelente! Comienza a caminar a ritmo cómodo. Mantén la respiración constante."
+      meta_pasos: 4500,
+      mensaje_inicio: "¡Excelente! Comienza a caminar a ritmo cómodo."
     };
   },
 
-  /**
-   * ENDPOINT 2: POST /api/activity/report-pain
-   */
   reportPain: async (sessionId: string, nivelEva: number): Promise<PainResponse> => {
     if (nivelEva >= 8) {
-        console.log(`CRITICAL PAIN EVENT: Session ${sessionId}, EVA ${nivelEva}`);
         return {
             accion: "ALTO_INMEDIATO",
-            mensaje: "🛑 DESCANSA AHORA. El dolor es demasiado alto. No continúes hasta que el dolor desaparezca completamente.",
+            mensaje: "🛑 DESCANSA AHORA. El dolor es demasiado alto.",
             bloquear_app: true
         };
     } 
-    
     if (nivelEva >= 5) {
         return {
             accion: "PRECAUCION",
-            mensaje: "⚠️ Reduce la velocidad ahora. Respira profundo. Si el dolor aumenta, detente.",
+            mensaje: "⚠️ Reduce la velocidad ahora. Respira profundo.",
             bloquear_app: false
         };
     }
-
     return {
         accion: "CONTINUAR",
         mensaje: "👍 Vas muy bien. Mantén el ritmo suave.",
@@ -70,25 +58,12 @@ export const api = {
     };
   },
 
-  /**
-   * ENDPOINT 3: POST /api/ai/nutrition
-   */
   generateNutritionPlan: async (ingredientes: string[], restricciones: string): Promise<Recipe | null> => {
     try {
       const prompt = `
-        Eres un nutricionista experto en salud cardiovascular y geriatría.
-        El paciente tiene Enfermedad Arterial Periférica (EAP).
-        
-        Ingredientes disponibles: ${ingredientes.join(', ')}.
-        Restricciones: ${restricciones}.
-
-        Genera una receta saludable en formato JSON estricto con la siguiente estructura:
-        {
-          "nombre": "Nombre del plato",
-          "beneficios": "Explicación breve de por qué ayuda a la circulación",
-          "ingredientes": ["lista", "de", "cantidades"],
-          "preparacion": ["paso 1", "paso 2"]
-        }
+        Eres un nutricionista experto en salud cardiovascular.
+        Ingredientes: ${ingredientes.join(', ')}. Restricciones: ${restricciones}.
+        Genera una receta JSON: { "nombre": "...", "beneficios": "...", "ingredientes": ["..."], "preparacion": ["..."] }
       `;
 
       const result = await genAI.models.generateContent({
@@ -111,16 +86,12 @@ export const api = {
       const text = result.text;
       if (!text) return null;
       return JSON.parse(text) as Recipe;
-      
     } catch (error) {
       console.error("AI Error:", error);
       return null;
     }
   },
 
-  /**
-   * ENDPOINT 4: GET /api/doctor/dashboard/:doctor_id
-   */
   getDoctorDashboard: async (doctorId: string): Promise<PatientSummary[]> => {
     const patients = await storageService.getPatients();
     const allSessions = await storageService.getSessions();
@@ -153,31 +124,23 @@ export const api = {
     });
   },
 
-  /**
-   * ENDPOINT 5: GET /api/exercises/assigned/:patient_id
-   * Fetches videos assigned to the patient.
-   */
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
-    await new Promise(r => setTimeout(r, 300)); // Simulate net
+    await new Promise(r => setTimeout(r, 300));
     
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     
-    // Default assignment if empty (Video 1 and 3)
     let assignmentsIds = ['v1', 'v3']; 
     if (assignmentsJson) {
         const allAssignments = JSON.parse(assignmentsJson);
         const patientData = allAssignments[patientId];
-        // Handle both legacy (array) and new (object) format
         if (patientData) {
             assignmentsIds = Array.isArray(patientData) ? patientData : patientData.videoIds;
         }
     }
 
     const today = new Date().toISOString().split('T')[0];
-
-    // Filter MOCK_VIDEOS based on assignment
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
@@ -198,14 +161,9 @@ export const api = {
     });
   },
 
-  /**
-   * ENDPOINT 6: POST /api/exercises/log
-   * Logs an exercise session.
-   */
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
     await new Promise(r => setTimeout(r, 400));
 
-    // Validar duplicados hoy (Constraint Check)
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
@@ -224,17 +182,11 @@ export const api = {
     return { success: true };
   },
 
-  /**
-   * ENDPOINT 7: POST /api/doctor/assign-routine
-   * Saves a new video routine for a patient with full config.
-   */
   saveExerciseRoutine: async (patientId: string, videoIds: string[], config: any) => {
     await new Promise(r => setTimeout(r, 600));
-    
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     const allAssignments = assignmentsJson ? JSON.parse(assignmentsJson) : {};
     
-    // Overwrite for this patient with enhanced structure
     allAssignments[patientId] = {
         videoIds: videoIds,
         config: config,
@@ -242,31 +194,18 @@ export const api = {
     };
     
     localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(allAssignments));
-    
     return { success: true };
   },
 
-  /**
-   * ENDPOINT 8: GET /api/doctor/routine-config/:patient_id
-   * Get the routine configuration settings.
-   */
   getRoutineConfig: async (patientId: string) => {
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     if (!assignmentsJson) return null;
-    
     const allAssignments = JSON.parse(assignmentsJson);
     const data = allAssignments[patientId];
-    
-    if (data && !Array.isArray(data)) {
-        return data.config;
-    }
+    if (data && !Array.isArray(data)) return data.config;
     return null;
   },
 
-  /**
-   * ENDPOINT 9: GET /api/doctor/patient-history/:patient_id
-   * Get extended history including video logs for charts.
-   */
   getPatientExerciseLogs: async (patientId: string): Promise<ExerciseSessionLog[]> => {
     await new Promise(r => setTimeout(r, 300));
     const logsJson = localStorage.getItem(LOGS_KEY);

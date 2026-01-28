@@ -35,11 +35,9 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
   useEffect(() => {
     const loadData = async () => {
         setLoading(true);
-        // Load Logs
         const logs = await api.getPatientExerciseLogs(patient.id);
         setExerciseLogs(logs);
 
-        // Load Current Assignments & Config
         const assignments = await api.getAssignedExercises(patient.id);
         const currentVideoIds = assignments.map(a => a.video_id);
         setSelectedVideos(currentVideoIds);
@@ -51,7 +49,6 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
             setReps(config.reps || 10);
             setNotes(config.notes || '');
         }
-        
         setLoading(false);
     };
     loadData();
@@ -110,7 +107,6 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
 
         const ctx = difficultyChartRef.current.getContext('2d');
         if (ctx) {
-            // Group logs by video to avg difficulty
             const videoStats: {[key: string]: number[]} = {};
             exerciseLogs.forEach(l => {
                 const vidTitle = MOCK_VIDEOS.find(v => v.id === l.video_id)?.titulo || 'Desconocido';
@@ -172,10 +168,8 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     onClose();
   };
 
-  // --- Helpers ---
   const getPainAlerts = () => exerciseLogs.filter(l => l.dolor_durante_ejercicio && l.dolor_durante_ejercicio >= 7);
 
-  // Generate Calendar Data for Compliance Table (Last 7 days)
   const getComplianceData = () => {
     const days = [];
     const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -191,24 +185,23 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
   };
   const last7Days = getComplianceData();
   
-  // Exercises that have been done at least once in 7 days OR are currently assigned
   const activeExercises = Array.from(new Set([
     ...selectedVideos,
     ...exerciseLogs.map(l => l.video_id)
   ]));
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white w-full h-full sm:h-[90vh] sm:rounded-2xl max-w-5xl flex flex-col shadow-2xl overflow-hidden animate-slide-up">
         
         {/* HEADER */}
-        <div className="flex justify-between items-center p-6 border-b bg-gray-50">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b bg-gray-50">
           <div>
-            <h2 className="text-2xl font-extrabold text-blue-900">{patient.nombre}</h2>
-            <div className="flex gap-2 text-sm text-gray-500 mt-1">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-blue-900">{patient.nombre}</h2>
+            <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-500 mt-1">
                <span>{patient.edad} años</span>
-               <span>•</span>
-               <span>{patient.alerta ? '🔴 Estado Crítico' : '🟢 Estado Estable'}</span>
+               <span className="hidden sm:inline">•</span>
+               <span>{patient.alerta ? '🔴 Crítico' : '🟢 Estable'}</span>
             </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 font-bold text-gray-600">✕</button>
@@ -217,52 +210,48 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
         {/* TABS */}
         <div className="flex border-b">
           <button 
-            className={`flex-1 py-4 font-bold text-center border-b-4 transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
             onClick={() => setActiveTab('general')}
           >
-            📊 Resumen Clínico
+            📊 Clínico
           </button>
           <button 
-            className={`flex-1 py-4 font-bold text-center border-b-4 transition-colors ${activeTab === 'kinesiologia' ? 'border-green-600 text-green-700 bg-green-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors ${activeTab === 'kinesiologia' ? 'border-green-600 text-green-700 bg-green-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
             onClick={() => setActiveTab('kinesiologia')}
           >
-            📹 Gestión Kinesiología
+            📹 Kinesiología
           </button>
         </div>
 
         {/* CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-white pb-20 sm:pb-6">
           
           {/* TAB 1: GENERAL */}
           {activeTab === 'general' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Left Column: Chart */}
               <div className="md:col-span-2 space-y-6">
                 <div className="bg-white p-4 rounded-xl border shadow-sm">
-                  <h3 className="font-bold text-gray-700 mb-4">Historial de Pasos y Dolor (7 días)</h3>
-                  <div className="h-64 relative">
+                  <h3 className="font-bold text-gray-700 mb-4">Historial (7 días)</h3>
+                  <div className="h-56 sm:h-64 relative">
                      <canvas ref={generalChartRef}></canvas>
                   </div>
                 </div>
                 
-                {/* Pain Alerts List (General) */}
                 <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-                  <h3 className="font-bold text-red-800 mb-2">Últimos Eventos de Dolor</h3>
+                  <h3 className="font-bold text-red-800 mb-2">Dolor Reciente</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Hace 2 días</span>
-                      <span className="font-bold text-red-600">EVA 5 (Precaución)</span>
+                      <span className="font-bold text-red-600">EVA 5</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Config Form */}
-              <form onSubmit={handleSaveGeneral} className="space-y-6 bg-gray-50 p-6 rounded-xl h-fit border">
-                <h3 className="font-bold text-gray-800 text-lg border-b pb-2">Ajuste de Tratamiento</h3>
-                
+              <form onSubmit={handleSaveGeneral} className="space-y-6 bg-gray-50 p-4 rounded-xl h-fit border">
+                <h3 className="font-bold text-gray-800 text-lg border-b pb-2">Tratamiento</h3>
                 <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-2">Meta de Pasos Diaria</label>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Meta Pasos</label>
                   <input 
                     type="number" 
                     value={stepGoal}
@@ -270,62 +259,50 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                     className="w-full p-3 border rounded-lg focus:border-blue-500"
                   />
                 </div>
-
-                <div className="pt-4">
-                  <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg">
-                    Guardar Cambios
-                  </button>
-                </div>
+                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg">
+                  Guardar
+                </button>
               </form>
             </div>
           )}
 
-          {/* TAB 2: KINESIOLOGÍA (VIDEO MODULE) */}
+          {/* TAB 2: KINESIOLOGÍA */}
           {activeTab === 'kinesiologia' && (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               
-              {/* SECCIÓN 1: BIBLIOTECA DE VIDEOS */}
               <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                <div className="bg-green-50 px-6 py-4 border-b border-green-100">
-                  <h3 className="font-bold text-green-800 text-lg">Biblioteca de Ejercicios Disponibles</h3>
+                <div className="bg-green-50 px-4 py-3 border-b border-green-100">
+                  <h3 className="font-bold text-green-800">Biblioteca Ejercicios</h3>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
-                    <table className="tabla-pacientes w-full">
-                        <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                <div className="max-h-60 sm:max-h-80 overflow-y-auto">
+                    <table className="w-full text-sm sm:text-base">
+                        <thead className="sticky top-0 bg-white z-10 shadow-sm text-left">
                             <tr>
-                                <th className="text-center w-16">#</th>
-                                <th className="w-32">Vista Previa</th>
-                                <th>Detalles del Ejercicio</th>
-                                <th>Grupos Musculares</th>
-                                <th>Asignar</th>
+                                <th className="p-2 w-12 text-center">#</th>
+                                <th className="p-2 hidden sm:table-cell">Video</th>
+                                <th className="p-2">Detalle</th>
+                                <th className="p-2 text-center">Asignar</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {MOCK_VIDEOS.map(video => (
-                                <tr key={video.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="text-center font-bold text-gray-400">{video.numero_orden}</td>
-                                    <td>
+                                <tr key={video.id} className="hover:bg-gray-50">
+                                    <td className="p-2 text-center font-bold text-gray-400">{video.numero_orden}</td>
+                                    <td className="p-2 hidden sm:table-cell">
                                         <img 
                                             src={`https://img.youtube.com/vi/${video.youtube_video_id}/default.jpg`} 
-                                            className="thumbnail-small" 
-                                            alt={video.titulo}
-                                            onClick={() => window.open(`https://www.youtube.com/watch?v=${video.youtube_video_id}`, '_blank')}
+                                            className="w-20 h-14 object-cover rounded" 
+                                            alt="mini"
                                         />
                                     </td>
-                                    <td>
-                                        <div className="font-bold text-gray-800 text-base">{video.titulo}</div>
-                                        <div className="text-xs text-gray-500 mt-1">{video.repeticiones_sugeridas}</div>
-                                        <div className="text-xs text-gray-500">Eq: {video.equipamiento_necesario.join(', ')}</div>
+                                    <td className="p-2">
+                                        <div className="font-bold text-gray-800 line-clamp-1">{video.titulo}</div>
+                                        <div className="text-xs text-gray-500">{video.nivel_dificultad}</div>
                                     </td>
-                                    <td>
-                                        {video.grupos_musculares.map(gm => (
-                                            <span key={gm} className="badge-musculo">{gm}</span>
-                                        ))}
-                                    </td>
-                                    <td className="text-center">
+                                    <td className="p-2 text-center">
                                         <input 
                                             type="checkbox" 
-                                            className="checkbox-asignar"
+                                            className="w-5 h-5 accent-green-600"
                                             checked={selectedVideos.includes(video.id)}
                                             onChange={() => handleToggleVideo(video.id)}
                                         />
@@ -337,81 +314,73 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                 </div>
               </div>
 
-              {/* SECCIÓN 2: CONFIGURACIÓN Y CUMPLIMIENTO (2 Columns) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* COL 1: CONFIG FORM */}
-                <div className="bg-gray-50 p-6 rounded-xl border">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span>⚙️</span> Configuración de la Rutina
-                    </h3>
+                <div className="bg-gray-50 p-4 rounded-xl border">
+                    <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase">Configuración</h3>
                     
-                    <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-3 gap-2 mb-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Frecuencia</label>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Días/Sem</label>
                             <select 
-                                className="w-full p-2 border rounded-lg bg-white"
+                                className="w-full p-2 border rounded-lg bg-white text-sm"
                                 value={freqSemanal}
                                 onChange={(e) => setFreqSemanal(Number(e.target.value))}
                             >
-                                <option value="2">2 días/sem</option>
-                                <option value="3">3 días/sem</option>
-                                <option value="4">4 días/sem</option>
-                                <option value="5">5 días/sem</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Series</label>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Series</label>
                             <input 
                                 type="number" 
-                                className="w-full p-2 border rounded-lg" 
+                                className="w-full p-2 border rounded-lg text-sm" 
                                 value={series}
                                 onChange={(e) => setSeries(Number(e.target.value))}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Reps</label>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Reps</label>
                             <input 
                                 type="number" 
-                                className="w-full p-2 border rounded-lg"
+                                className="w-full p-2 border rounded-lg text-sm"
                                 value={reps}
                                 onChange={(e) => setReps(Number(e.target.value))}
                             />
                         </div>
                     </div>
 
-                    <div className="mb-6">
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Notas para el paciente</label>
+                    <div className="mb-4">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-1">Notas</label>
                         <textarea 
-                            className="w-full p-3 border rounded-lg h-24 text-sm"
-                            placeholder="Ej: Si sientes dolor en la rodilla, descansa 2 minutos entre series."
+                            className="w-full p-2 border rounded-lg h-16 text-sm"
+                            placeholder="Instrucciones..."
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                         ></textarea>
                     </div>
 
                     <button 
-                        className="btn-asignar-rutina"
+                        className="w-full py-3 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700"
                         onClick={handleSaveRoutine}
                         disabled={loading}
                     >
-                        {loading ? 'Guardando...' : '✓ ASIGNAR RUTINA'}
+                        {loading ? '...' : 'Guardar Rutina'}
                     </button>
                 </div>
 
-                {/* COL 2: COMPLIANCE & CHARTS */}
-                <div className="space-y-6">
-                    
-                    {/* Compliance Table */}
+                <div className="space-y-4">
                     <div className="bg-white p-4 rounded-xl border shadow-sm">
-                        <h3 className="font-bold text-gray-700 text-sm mb-2">Cumplimiento (Últimos 7 días)</h3>
+                        <h3 className="font-bold text-gray-700 text-sm mb-2">Cumplimiento (7 días)</h3>
                         <div className="overflow-x-auto">
-                            <table className="tabla-cumplimiento">
+                            <table className="w-full text-xs">
                                 <thead>
                                     <tr>
-                                        <th className="text-left pl-2">Ejercicio</th>
+                                        <th className="text-left">Ej</th>
                                         {last7Days.map(d => (
-                                            <th key={d.date}>{d.name}</th>
+                                            <th key={d.date} className="w-6 text-center">{d.name.charAt(0)}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -419,8 +388,8 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                                     {activeExercises.map(vidId => {
                                         const videoTitle = MOCK_VIDEOS.find(v => v.id === vidId)?.titulo || 'Unknown';
                                         return (
-                                            <tr key={vidId}>
-                                                <td className="text-left font-medium text-xs pl-2 truncate max-w-[100px]" title={videoTitle}>{videoTitle}</td>
+                                            <tr key={vidId} className="border-t">
+                                                <td className="py-2 truncate max-w-[80px]" title={videoTitle}>{videoTitle}</td>
                                                 {last7Days.map(day => {
                                                     const done = exerciseLogs.some(l => 
                                                         l.video_id === vidId && 
@@ -428,8 +397,8 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                                                         l.completado
                                                     );
                                                     return (
-                                                        <td key={day.date}>
-                                                            {done ? <span className="check-completado">✓</span> : <span className="check-falta">·</span>}
+                                                        <td key={day.date} className="text-center">
+                                                            {done ? <span className="text-green-500 font-bold">✓</span> : <span className="text-gray-200">·</span>}
                                                         </td>
                                                     )
                                                 })}
@@ -440,28 +409,6 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                             </table>
                         </div>
                     </div>
-
-                    {/* Difficulty Chart */}
-                    <div className="bg-white p-4 rounded-xl border shadow-sm h-48 relative">
-                        <h3 className="font-bold text-gray-700 text-sm mb-2">Dificultad Percibida Promedio</h3>
-                        <canvas ref={difficultyChartRef}></canvas>
-                    </div>
-
-                    {/* Pain Alerts (Specific to Exercises) */}
-                    {getPainAlerts().length > 0 && (
-                        <div className="bg-red-50 p-4 rounded-xl border border-red-200" id="alertas-dolor-ejercicios">
-                            <h4 className="font-bold text-red-700 text-sm mb-2">⚠️ Alertas de Dolor en Ejercicios</h4>
-                            {getPainAlerts().slice(0, 3).map((log, idx) => (
-                                <div key={idx} className="alerta-dolor-item">
-                                    <div className="truncate max-w-[150px] font-bold text-gray-800">
-                                        {MOCK_VIDEOS.find(v => v.id === log.video_id)?.titulo}
-                                    </div>
-                                    <span className={`eva-badge eva-${log.dolor_durante_ejercicio}`}>EVA {log.dolor_durante_ejercicio}</span>
-                                    <span className="text-xs text-gray-500">{log.fecha_realizacion}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
               </div>
