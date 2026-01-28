@@ -14,6 +14,114 @@ export const getLocalDateString = (): string => {
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
 
+// VIDEOS REALES SOLICITADOS (ORDEN Y TITULOS CORREGIDOS)
+export const MOCK_VIDEOS: ExerciseVideo[] = [
+  { 
+    id: 'v1', 
+    numero_orden: 1, 
+    titulo: 'Variante Pararse y Sentarse', 
+    descripcion: 'Ejercicio fundamental para fortalecer piernas y glúteos de forma segura.', 
+    youtube_video_id: 'O7oFiCMN25E', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['cuadriceps', 'gluteos'], 
+    repeticiones_sugeridas: '2-3 series • 8-15 reps', 
+    equipamiento_necesario: ['silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 5 
+  },
+  { 
+    id: 'v2', 
+    numero_orden: 2, 
+    titulo: 'Remo con Banda Elástica', 
+    descripcion: 'Fortalecimiento de espalda para mejorar postura.', 
+    youtube_video_id: 'J3VFboUbubo', 
+    tipo_ejercicio: 'resistencia', 
+    grupos_musculares: ['dorsal', 'trapecio'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica'], 
+    nivel_dificultad: 'intermedio', 
+    duracion_estimada_minutos: 6 
+  },
+  { 
+    id: 'v3', 
+    numero_orden: 3, 
+    titulo: 'Pararse y Sentarse', 
+    descripcion: 'Ejercicio funcional clásico sin apoyo de brazos si es posible.', 
+    youtube_video_id: 'gWdgSzPrncU', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['cuadriceps'], 
+    repeticiones_sugeridas: '2-3 series • 8-12 reps', 
+    equipamiento_necesario: ['silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 5 
+  },
+  { 
+    id: 'v4', 
+    numero_orden: 4, 
+    titulo: 'Extensión de Glúteo (V1)', 
+    descripcion: 'Fortalecimiento de la cadera posterior.', 
+    youtube_video_id: 'G00dG-33QqA', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['gluteos'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica', 'silla'], 
+    nivel_dificultad: 'intermedio', 
+    duracion_estimada_minutos: 4 
+  },
+  { 
+    id: 'v5', 
+    numero_orden: 5, 
+    titulo: 'Extensión de Glúteo (V2)', 
+    descripcion: 'Variante enfocada en control muscular.', 
+    youtube_video_id: 'pX7DEPwYXEE', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['gluteos', 'cuadriceps'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica', 'silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 4 
+  },
+  { 
+    id: 'v6', 
+    numero_orden: 6, 
+    titulo: 'Extensión de Cuádriceps', 
+    descripcion: 'Fortalecimiento de muslos con peso adicional.', 
+    youtube_video_id: 'zEa1Eq3yIsw', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['cuadriceps'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['tobilleras', 'silla'], 
+    nivel_dificultad: 'intermedio', 
+    duracion_estimada_minutos: 5 
+  },
+  { 
+    id: 'v7', 
+    numero_orden: 7, 
+    titulo: 'Elevación de Talones', 
+    descripcion: 'Clave para el retorno venoso y fuerza de pantorrillas.', 
+    youtube_video_id: '0caP82ZUo1I', 
+    tipo_ejercicio: 'fuerza_eeii', 
+    grupos_musculares: ['pantorrillas'], 
+    repeticiones_sugeridas: '2-3 series • 15-20 reps', 
+    equipamiento_necesario: ['silla'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 3 
+  },
+  { 
+    id: 'v8', 
+    numero_orden: 8, 
+    titulo: 'Curl Bíceps (flexión de codo)', 
+    descripcion: 'Fortalecimiento de brazos para actividades diarias.', 
+    youtube_video_id: '-FNnffnCPxE', 
+    tipo_ejercicio: 'resistencia', 
+    grupos_musculares: ['biceps'], 
+    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
+    equipamiento_necesario: ['banda_elastica', 'mancuernas'], 
+    nivel_dificultad: 'principiante', 
+    duracion_estimada_minutos: 4 
+  },
+];
+
 const LOGS_KEY = 'rehapp_exercise_logs';
 const ASSIGNMENTS_KEY = 'rehapp_assignments';
 const CLINICAL_METRICS_KEY = 'rehapp_clinical_metrics';
@@ -77,7 +185,10 @@ export const api = {
     return patients.map(p => {
         const pWalkSessions = allWalkSessions.filter(s => s.patientId === p.id);
         const pExerciseLogs = allExerciseLogs.filter(l => String(l.patient_id) === String(p.id));
+        const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
         
+        // Criterio PDF: "Mínimo 3 sesiones semanales" (Caminata + Ejercicio)
+        // Simplificamos: Asumimos sesiones de caminata como la base
         const weeklyCompliance = pWalkSessions.length; 
         
         const maxWalkPain = Math.max(0, ...pWalkSessions.map(s => s.painLevel));
@@ -105,30 +216,12 @@ export const api = {
     });
   },
 
-  // --- VIDEO MANAGEMENT (Dynamic) ---
-
-  getAllVideos: async (): Promise<ExerciseVideo[]> => {
-    return await storageService.getVideos();
-  },
-
-  saveVideoToLibrary: async (video: ExerciseVideo): Promise<void> => {
-    await storageService.saveVideo(video);
-  },
-
-  deleteVideoFromLibrary: async (videoId: string): Promise<void> => {
-    await storageService.deleteVideo(videoId);
-  },
-
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
-    
-    // Default assignment if none exists: Videos 1 to 8 from the DB
-    const allVideos = await storageService.getVideos();
-    let assignmentsIds = allVideos.map(v => v.id);
-
+    let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
     if (assignmentsJson) {
         const allAssignments = JSON.parse(assignmentsJson);
         const patientData = allAssignments[patientId];
@@ -139,11 +232,9 @@ export const api = {
 
     const today = getLocalDateString();
     
-    // Filter videos that are assigned (dynamically fetched)
-    const assignedVideos = allVideos.filter(v => assignmentsIds.includes(v.id));
+    const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
-    // MAP AND SORT BY NUMERO_ORDEN TO ENSURE CORRECT DISPLAY
-    const mapped = assignedVideos.map(video => {
+    return assignedVideos.map(video => {
         const todaysLog = logs.find(l => 
             String(l.patient_id) === String(patientId) && 
             String(l.video_id) === String(video.id) && 
@@ -160,9 +251,6 @@ export const api = {
             last_completed_at: todaysLog?.timestamp
         };
     });
-
-    // STRICT SORTING: Always rely on 'numero_orden'
-    return mapped.sort((a, b) => a.video.numero_orden - b.video.numero_orden);
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {

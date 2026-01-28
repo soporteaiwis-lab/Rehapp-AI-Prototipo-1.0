@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PatientSummary, ExerciseSessionLog, ClinicalTrialMetrics, WalkSession, ExerciseVideo } from '../types';
-import { api, getLocalDateString } from '../services/api';
+import { PatientSummary, ExerciseSessionLog, ClinicalTrialMetrics, WalkSession } from '../types';
+import { api, MOCK_VIDEOS, getLocalDateString } from '../services/api';
 import { storageService } from '../services/storageService';
 import Chart from 'chart.js/auto';
 
@@ -28,7 +28,6 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
   // Kinesiology State
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseSessionLog[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
-  const [allVideos, setAllVideos] = useState<ExerciseVideo[]>([]);
   const [freqSemanal, setFreqSemanal] = useState(3);
   const [series, setSeries] = useState(2);
   const [reps, setReps] = useState(10);
@@ -56,10 +55,6 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
         const logs = await api.getPatientExerciseLogs(patient.id);
         setExerciseLogs(logs);
 
-        // Fetch Dynamic Video Library
-        const videos = await api.getAllVideos();
-        setAllVideos(videos);
-
         const assignments = await api.getAssignedExercises(patient.id);
         const currentVideoIds = assignments.map(a => a.video_id);
         setSelectedVideos(currentVideoIds);
@@ -85,28 +80,33 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     loadData();
   }, [patient]);
 
-  // 2. Render General Chart
+  // 2. Render General Chart (REAL DATA LOGIC)
   useEffect(() => {
     if (activeTab === 'general' && generalChartRef.current) {
         if (generalChartInstance.current) generalChartInstance.current.destroy();
 
+        // --- DATA PROCESSING FOR CHART ---
         const dayLabels = [];
         const stepsData = [];
         const painData = [];
         
+        // Generate last 7 days
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
             
+            // Label (e.g., "Lun")
             const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' });
             dayLabels.push(dayName.charAt(0).toUpperCase() + dayName.slice(1));
 
+            // 1. Sum Steps for this date
             const dailySteps = walkSessions
                 .filter(s => s.date.startsWith(dateStr))
                 .reduce((acc, curr) => acc + curr.steps, 0);
             stepsData.push(dailySteps);
 
+            // 2. Max Pain for this date (Walk OR Exercise)
             const maxWalkPain = Math.max(0, ...walkSessions
                 .filter(s => s.date.startsWith(dateStr))
                 .map(s => s.painLevel));
@@ -133,7 +133,8 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                     yAxisID: 'y',
                     fill: true,
                     tension: 0.3,
-                    pointRadius: 4
+                    pointRadius: 4,
+                    pointBackgroundColor: '#4CAF50'
                 },
                 {
                     label: 'Nivel Dolor Máx (EVA)',
@@ -152,19 +153,56 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y;
+                                    if (context.datasetIndex === 0) label += ' pasos';
+                                    if (context.datasetIndex === 1) label += ' pts';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Pasos' }, beginAtZero: true },
-                y1: { type: 'linear', display: true, position: 'right', min: 0, max: 10, title: { display: true, text: 'EVA' }, grid: { drawOnChartArea: false } },
+                y: { 
+                    type: 'linear', 
+                    display: true, 
+                    position: 'left', 
+                    title: { display: true, text: 'Pasos' },
+                    beginAtZero: true,
+                    suggestedMax: patient.meta_pasos + 1000
+                },
+                y1: { 
+                    type: 'linear', 
+                    display: true, 
+                    position: 'right', 
+                    min: 0, 
+                    max: 10, 
+                    title: { display: true, text: 'EVA' }, 
+                    grid: { drawOnChartArea: false },
+                    ticks: { stepSize: 1 }
+                },
                 }
             }
             });
         }
     }
     return () => { if (generalChartInstance.current) generalChartInstance.current.destroy(); };
-  }, [activeTab, walkSessions, exerciseLogs, patient.meta_pasos]);
+  }, [activeTab, walkSessions, exerciseLogs, patient.meta_pasos]); // Dependencies updated to redraw on data change
 
-  // 3. Render Difficulty Chart
+  // 3. Render Difficulty Chart (Kinesiology)
   useEffect(() => {
     if (activeTab === 'kinesiologia' && difficultyChartRef.current && exerciseLogs.length > 0) {
         if (difficultyChartInstance.current) difficultyChartInstance.current.destroy();
@@ -173,7 +211,7 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
         if (ctx) {
             const videoStats: {[key: string]: number[]} = {};
             exerciseLogs.forEach(l => {
-                const vidTitle = allVideos.find(v => v.id === l.video_id)?.titulo || 'Desconocido';
+                const vidTitle = MOCK_VIDEOS.find(v => v.id === l.video_id)?.titulo || 'Desconocido';
                 if (!videoStats[vidTitle]) videoStats[vidTitle] = [];
                 videoStats[vidTitle].push(l.dificultad_percibida);
             });
@@ -205,7 +243,9 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
         }
     }
     return () => { if (difficultyChartInstance.current) difficultyChartInstance.current.destroy(); };
-  }, [activeTab, exerciseLogs, allVideos]);
+  }, [activeTab, exerciseLogs]);
+
+  // --- Handlers ---
 
   const handleToggleVideo = (videoId: string) => {
     setSelectedVideos(prev => 
@@ -214,6 +254,10 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
   };
 
   const handleSaveRoutine = async () => {
+    if (selectedVideos.length === 0) {
+        alert("Selecciona al menos un ejercicio.");
+        return;
+    }
     setLoading(true);
     await api.saveExerciseRoutine(patient.id, selectedVideos, { freqSemanal, series, reps, notes });
     alert("✅ Rutina actualizada exitosamente");
@@ -224,33 +268,38 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     e.preventDefault();
     setLoading(true);
     await api.updatePatientTreatment(patient.id, stepGoal);
-    alert("✅ Meta actualizada.");
+    alert(`✅ Tratamiento actualizado para ${patient.nombre}. Meta guardada.`);
     setLoading(false);
     onClose();
   };
 
   const handleSaveMetrics = async () => {
       setLoading(true);
-      const imc = (metrics.peso_kg > 0) ? metrics.peso_kg / 2.8 : 0; 
+      // Auto calculate BMI and HR Reserve
+      const imc = (metrics.peso_kg > 0) ? metrics.peso_kg / 2.8 : 0; // Mock calculation, real needs height
       const fc_reserva = metrics.fc_max_teorica - metrics.fc_reposo;
+      
       const updatedMetrics = { ...metrics, imc, fc_reserva };
       setMetrics(updatedMetrics);
+      
       await api.saveClinicalMetrics(patient.id, updatedMetrics);
-      alert("✅ Datos Clínicos guardados.");
+      alert("✅ Datos del Ensayo Clínico guardados.");
       setLoading(false);
   };
 
-  // --- STRICT ORDERING ---
-  // Ensure we display all videos in correct order (1...N) regardless of gaps in assignment
-  const sortedLibrary = [...allVideos].sort((a,b) => a.numero_orden - b.numero_orden);
-
-  const activeExerciseIds = Array.from(new Set([
-    ...selectedVideos,
-    ...exerciseLogs.map(l => l.video_id)
-  ]));
+  // --- Logic for Volume Calculation (PDF Requirement: 60 mins total) ---
+  const today = getLocalDateString();
+  const todaysWalk = walkSessions.find(s => s.date.startsWith(today));
+  const walkMinutes = todaysWalk ? Math.floor(todaysWalk.durationSeconds / 60) : 0;
   
-  // Filter the library to only show active ones for the compliance table
-  const activeVideosSorted = sortedLibrary.filter(v => activeExerciseIds.includes(v.id));
+  const todaysExercises = exerciseLogs.filter(l => l.fecha_realizacion === today);
+  const exerciseMinutes = todaysExercises.reduce((acc, log) => {
+      const vid = MOCK_VIDEOS.find(v => v.id === log.video_id);
+      return acc + (vid?.duracion_estimada_minutos || 5);
+  }, 0);
+
+  const totalMinutesToday = walkMinutes + exerciseMinutes;
+  const targetMinutes = 60; // PDF Requirement
 
   const getComplianceData = () => {
     const days = [];
@@ -266,6 +315,15 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     return days;
   };
   const last7Days = getComplianceData();
+  
+  const activeExercises = Array.from(new Set([
+    ...selectedVideos,
+    ...exerciseLogs.map(l => l.video_id)
+  ])).sort((idA, idB) => {
+      const videoA = MOCK_VIDEOS.find(v => v.id === idA);
+      const videoB = MOCK_VIDEOS.find(v => v.id === idB);
+      return (videoA?.numero_orden || 0) - (videoB?.numero_orden || 0);
+  });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -286,13 +344,30 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
 
         {/* TABS */}
         <div className="flex border-b overflow-x-auto">
-          <button className={`flex-1 py-3 px-4 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors whitespace-nowrap ${activeTab === 'general' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`} onClick={() => setActiveTab('general')}>📊 Clínico</button>
-          <button className={`flex-1 py-3 px-4 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors whitespace-nowrap ${activeTab === 'kinesiologia' ? 'border-green-600 text-green-700 bg-green-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`} onClick={() => setActiveTab('kinesiologia')}>📹 Kinesiología</button>
-          <button className={`flex-1 py-3 px-4 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors whitespace-nowrap ${activeTab === 'ensayo_clinico' ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`} onClick={() => setActiveTab('ensayo_clinico')}>🔬 Ficha Ensayo</button>
+          <button 
+            className={`flex-1 py-3 px-4 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors whitespace-nowrap ${activeTab === 'general' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
+            onClick={() => setActiveTab('general')}
+          >
+            📊 Clínico
+          </button>
+          <button 
+            className={`flex-1 py-3 px-4 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors whitespace-nowrap ${activeTab === 'kinesiologia' ? 'border-green-600 text-green-700 bg-green-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
+            onClick={() => setActiveTab('kinesiologia')}
+          >
+            📹 Kinesiología
+          </button>
+          <button 
+            className={`flex-1 py-3 px-4 sm:py-4 font-bold text-center text-sm sm:text-base border-b-4 transition-colors whitespace-nowrap ${activeTab === 'ensayo_clinico' ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
+            onClick={() => setActiveTab('ensayo_clinico')}
+          >
+            🔬 Ficha Ensayo
+          </button>
         </div>
 
+        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-white pb-20 sm:pb-6">
           
+          {/* TAB 1: GENERAL */}
           {activeTab === 'general' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-6">
@@ -302,20 +377,52 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                      <canvas ref={generalChartRef}></canvas>
                   </div>
                 </div>
+                
+                {/* PDF Requirement: Volumne of Training */}
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                    <h3 className="font-bold text-blue-800 mb-2 uppercase text-sm">Volumen de Entrenamiento (Hoy)</h3>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <span className="text-3xl font-extrabold text-blue-900">{totalMinutesToday} min</span>
+                            <span className="text-sm text-gray-600 ml-2">/ {targetMinutes} min (Meta PDF)</span>
+                        </div>
+                        <div className="text-right text-xs text-gray-500 font-semibold">
+                            <div>Caminata: {walkMinutes} min</div>
+                            <div>Fuerza: {exerciseMinutes} min</div>
+                        </div>
+                    </div>
+                    <div className="w-full bg-blue-200 h-2 rounded-full mt-2">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min((totalMinutesToday/targetMinutes)*100, 100)}%` }}></div>
+                    </div>
+                </div>
               </div>
+
               <form onSubmit={handleSaveGeneral} className="space-y-6 bg-gray-50 p-4 rounded-xl h-fit border">
                 <h3 className="font-bold text-gray-800 text-lg border-b pb-2">Tratamiento</h3>
                 <div>
                   <label className="block text-sm font-bold text-gray-600 mb-2">Meta Pasos</label>
-                  <input type="number" value={stepGoal} onChange={(e) => setStepGoal(Number(e.target.value))} className="w-full p-3 border rounded-lg focus:border-blue-500" />
+                  <input 
+                    type="number" 
+                    value={stepGoal}
+                    onChange={(e) => setStepGoal(Number(e.target.value))}
+                    className="w-full p-3 border rounded-lg focus:border-blue-500"
+                  />
                 </div>
-                <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg">{loading ? 'Guardando...' : 'Guardar'}</button>
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg"
+                >
+                  {loading ? 'Guardando...' : 'Guardar'}
+                </button>
               </form>
             </div>
           )}
 
+          {/* TAB 2: KINESIOLOGÍA */}
           {activeTab === 'kinesiologia' && (
             <div className="space-y-6 sm:space-y-8">
+              
               <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="bg-green-50 px-4 py-3 border-b border-green-100">
                   <h3 className="font-bold text-green-800">Biblioteca Ejercicios</h3>
@@ -331,18 +438,27 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {sortedLibrary.map(video => (
+                            {MOCK_VIDEOS.map(video => (
                                 <tr key={video.id} className="hover:bg-gray-50">
                                     <td className="p-2 text-center font-bold text-gray-400">{video.numero_orden}</td>
                                     <td className="p-2 hidden sm:table-cell">
-                                        <img src={`https://img.youtube.com/vi/${video.youtube_video_id}/default.jpg`} className="w-20 h-14 object-cover rounded" alt="mini" />
+                                        <img 
+                                            src={`https://img.youtube.com/vi/${video.youtube_video_id}/default.jpg`} 
+                                            className="w-20 h-14 object-cover rounded" 
+                                            alt="mini"
+                                        />
                                     </td>
                                     <td className="p-2">
                                         <div className="font-bold text-gray-800 line-clamp-1">{video.titulo}</div>
                                         <div className="text-xs text-gray-500">{video.nivel_dificultad}</div>
                                     </td>
                                     <td className="p-2 text-center">
-                                        <input type="checkbox" className="w-5 h-5 accent-green-600" checked={selectedVideos.includes(video.id)} onChange={() => handleToggleVideo(video.id)} />
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-5 h-5 accent-green-600"
+                                            checked={selectedVideos.includes(video.id)}
+                                            onChange={() => handleToggleVideo(video.id)}
+                                        />
                                     </td>
                                 </tr>
                             ))}
@@ -352,20 +468,60 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
                 <div className="bg-gray-50 p-4 rounded-xl border">
                     <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase">Configuración</h3>
+                    
                     <div className="grid grid-cols-3 gap-2 mb-4">
                         <div>
                             <label className="block text-[10px] font-bold text-gray-500 mb-1">Días/Sem</label>
-                            <select className="w-full p-2 border rounded-lg bg-white text-sm" value={freqSemanal} onChange={(e) => setFreqSemanal(Number(e.target.value))}>
-                                <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                            <select 
+                                className="w-full p-2 border rounded-lg bg-white text-sm"
+                                value={freqSemanal}
+                                onChange={(e) => setFreqSemanal(Number(e.target.value))}
+                            >
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
                             </select>
                         </div>
-                        <div><label className="block text-[10px] font-bold text-gray-500 mb-1">Series</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={series} onChange={(e) => setSeries(Number(e.target.value))}/></div>
-                        <div><label className="block text-[10px] font-bold text-gray-500 mb-1">Reps</label><input type="number" className="w-full p-2 border rounded-lg text-sm" value={reps} onChange={(e) => setReps(Number(e.target.value))}/></div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Series</label>
+                            <input 
+                                type="number" 
+                                className="w-full p-2 border rounded-lg text-sm" 
+                                value={series}
+                                onChange={(e) => setSeries(Number(e.target.value))}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Reps</label>
+                            <input 
+                                type="number" 
+                                className="w-full p-2 border rounded-lg text-sm"
+                                value={reps}
+                                onChange={(e) => setReps(Number(e.target.value))}
+                            />
+                        </div>
                     </div>
-                    <div className="mb-4"><label className="block text-[10px] font-bold text-gray-500 mb-1">Notas</label><textarea className="w-full p-2 border rounded-lg h-16 text-sm" placeholder="Instrucciones..." value={notes} onChange={(e) => setNotes(e.target.value)}></textarea></div>
-                    <button className="w-full py-3 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700" onClick={handleSaveRoutine} disabled={loading}>{loading ? '...' : 'Guardar Rutina'}</button>
+
+                    <div className="mb-4">
+                        <label className="block text-[10px] font-bold text-gray-500 mb-1">Notas</label>
+                        <textarea 
+                            className="w-full p-2 border rounded-lg h-16 text-sm"
+                            placeholder="Instrucciones..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                        ></textarea>
+                    </div>
+
+                    <button 
+                        className="w-full py-3 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700"
+                        onClick={handleSaveRoutine}
+                        disabled={loading}
+                    >
+                        {loading ? '...' : 'Guardar Rutina'}
+                    </button>
                 </div>
 
                 <div className="space-y-4">
@@ -376,23 +532,36 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                                 <thead>
                                     <tr>
                                         <th className="text-left">Ej</th>
-                                        {last7Days.map(d => (<th key={d.date} className="w-6 text-center">{d.name.charAt(0)}</th>))}
+                                        {last7Days.map(d => (
+                                            <th key={d.date} className="w-6 text-center">{d.name.charAt(0)}</th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {activeVideosSorted.map(video => (
-                                        <tr key={video.id} className="border-t">
-                                            <td className="py-2 truncate max-w-[150px]" title={video.titulo}>
-                                                <span className="font-bold text-gray-400 mr-1">{video.numero_orden}.</span> {video.titulo}
-                                            </td>
-                                            {last7Days.map(day => {
-                                                const done = exerciseLogs.some(l => l.video_id === video.id && l.fecha_realizacion === day.date && l.completado);
-                                                return (
-                                                    <td key={day.date} className="text-center">{done ? <span className="text-green-500 font-bold">✓</span> : <span className="text-gray-200">·</span>}</td>
-                                                )
-                                            })}
-                                        </tr>
-                                    ))}
+                                    {activeExercises.map(vidId => {
+                                        const video = MOCK_VIDEOS.find(v => v.id === vidId);
+                                        const videoTitle = video ? `${video.numero_orden}. ${video.titulo}` : 'Desconocido';
+                                        
+                                        return (
+                                            <tr key={vidId} className="border-t">
+                                                <td className="py-2 truncate max-w-[150px]" title={videoTitle}>
+                                                    {videoTitle}
+                                                </td>
+                                                {last7Days.map(day => {
+                                                    const done = exerciseLogs.some(l => 
+                                                        l.video_id === vidId && 
+                                                        l.fecha_realizacion === day.date && 
+                                                        l.completado
+                                                    );
+                                                    return (
+                                                        <td key={day.date} className="text-center">
+                                                            {done ? <span className="text-green-500 font-bold">✓</span> : <span className="text-gray-200">·</span>}
+                                                        </td>
+                                                    )
+                                                })}
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -400,11 +569,13 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                 </div>
               </div>
 
-               {/* BITÁCORA DETALLADA */}
+               {/* NUEVA SECCIÓN: BITÁCORA DETALLADA */}
               <div className="mt-8 bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="bg-blue-50 px-4 py-3 border-b border-blue-100 flex justify-between items-center">
                     <h3 className="font-bold text-blue-900">Bitácora Detallada de Ejecución</h3>
-                    <span className="text-xs text-blue-600 font-semibold bg-blue-100 px-2 py-1 rounded">Últimos Registros</span>
+                    <span className="text-xs text-blue-600 font-semibold bg-blue-100 px-2 py-1 rounded">
+                        Últimos Registros
+                    </span>
                 </div>
                 <div className="overflow-x-auto max-h-80">
                     <table className="w-full text-sm">
@@ -419,25 +590,41 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                         </thead>
                         <tbody className="divide-y">
                             {exerciseLogs.length === 0 ? (
-                                <tr><td colSpan={5} className="p-4 text-center text-gray-400 italic">No hay registros de ejercicios aún.</td></tr>
+                                <tr>
+                                    <td colSpan={5} className="p-4 text-center text-gray-400 italic">
+                                        No hay registros de ejercicios aún.
+                                    </td>
+                                </tr>
                             ) : (
                                 exerciseLogs.map((log, index) => {
-                                    const video = allVideos.find(v => v.id === log.video_id);
+                                    const video = MOCK_VIDEOS.find(v => v.id === log.video_id);
                                     const pain = log.dolor_durante_ejercicio || 0;
                                     const isHighPain = pain >= 5;
                                     
                                     return (
                                         <tr key={index} className="hover:bg-gray-50">
-                                            <td className="p-3 text-gray-600 whitespace-nowrap">{log.fecha_realizacion}</td>
-                                            <td className="p-3 font-semibold text-gray-800">
-                                                {video ? `${video.numero_orden}. ${video.titulo}` : 'Desconocido'}
+                                            <td className="p-3 text-gray-600 whitespace-nowrap">
+                                                {log.fecha_realizacion}
                                             </td>
-                                            <td className="p-3 text-center"><span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-bold">{log.series_completadas} series x {log.repeticiones_completadas} reps</span></td>
-                                            <td className="p-3 text-center"><span className="font-bold text-blue-600">{log.dificultad_percibida}</span></td>
+                                            <td className="p-3 font-semibold text-gray-800">
+                                                {video?.titulo || 'Desconocido'}
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-bold">
+                                                    {log.series_completadas}x{log.repeticiones_completadas}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                <span className="font-bold text-blue-600">{log.dificultad_percibida}</span>
+                                            </td>
                                             <td className="p-3 text-center">
                                                 {pain > 0 ? (
-                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${isHighPain ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>EVA {pain}</span>
-                                                ) : <span className="text-green-500 font-bold text-xs">Sin Dolor</span>}
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${isHighPain ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                        EVA {pain}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-green-500 font-bold text-xs">Sin Dolor</span>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -450,31 +637,130 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
             </div>
           )}
 
+          {/* TAB 3: ENSAYO CLÍNICO (PDF DATA) */}
           {activeTab === 'ensayo_clinico' && (
               <div className="space-y-6">
                   <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-lg">
                       <h3 className="font-bold text-purple-900">Objetivo del Estudio</h3>
-                      <p className="text-sm text-purple-700 mt-1">Evaluar eficacia de programa domiciliario (3 ses/semana, 60 mins).</p>
+                      <p className="text-sm text-purple-700 mt-1">
+                          Evaluar eficacia de programa domiciliario (3 ses/semana, 60 mins). 
+                          <br />
+                          <strong>Meta Intensidad:</strong> Caminar hasta EVA 8-10, descansar y retomar.
+                      </p>
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* CARD 1: Variables Fisiológicas */}
                       <div className="bg-white p-5 rounded-xl border shadow-sm">
                           <h4 className="font-bold text-gray-800 border-b pb-2 mb-4">Hemodinámica & Antropometría</h4>
                           <div className="grid grid-cols-2 gap-4">
-                              <div><label className="label-input">Peso (Kg)</label><input type="number" className="input-std" value={metrics.peso_kg} onChange={e => setMetrics({...metrics, peso_kg: Number(e.target.value)})} /></div>
-                              <div><label className="label-input">FC Reposo (lpm)</label><input type="number" className="input-std" value={metrics.fc_reposo} onChange={e => setMetrics({...metrics, fc_reposo: Number(e.target.value)})} /></div>
+                              <div>
+                                  <label className="label-input">Peso (Kg)</label>
+                                  <input type="number" className="input-std" value={metrics.peso_kg} onChange={e => setMetrics({...metrics, peso_kg: Number(e.target.value)})} />
+                              </div>
+                              <div>
+                                  <label className="label-input">FC Reposo (lpm)</label>
+                                  <input type="number" className="input-std" value={metrics.fc_reposo} onChange={e => setMetrics({...metrics, fc_reposo: Number(e.target.value)})} />
+                              </div>
+                              <div>
+                                  <label className="label-input">ITB Derecho</label>
+                                  <input type="number" step="0.1" className="input-std" value={metrics.itb_derecho} onChange={e => setMetrics({...metrics, itb_derecho: Number(e.target.value)})} />
+                              </div>
+                              <div>
+                                  <label className="label-input">ITB Izquierdo</label>
+                                  <input type="number" step="0.1" className="input-std" value={metrics.itb_izquierdo} onChange={e => setMetrics({...metrics, itb_izquierdo: Number(e.target.value)})} />
+                              </div>
+                              <div className="col-span-2 bg-gray-100 p-2 rounded text-center">
+                                  <div className="text-xs text-gray-500 font-bold uppercase">FC Máxima Teórica (220-edad)</div>
+                                  <div className="text-xl font-bold text-gray-800">{metrics.fc_max_teorica} lpm</div>
+                              </div>
                           </div>
                       </div>
+
+                      {/* CARD 2: Capacidad Funcional */}
+                      <div className="bg-white p-5 rounded-xl border shadow-sm">
+                          <h4 className="font-bold text-gray-800 border-b pb-2 mb-4">Capacidad Funcional (Objetivos 1 & 3)</h4>
+                          <div className="space-y-4">
+                              <div>
+                                  <label className="label-input">Test Marcha 6 Minutos (Metros)</label>
+                                  <div className="flex items-center gap-2">
+                                      <input type="number" className="input-std text-lg" value={metrics.test_marcha_6min_metros} onChange={e => setMetrics({...metrics, test_marcha_6min_metros: Number(e.target.value)})} />
+                                      <span className="text-gray-500 font-bold">m</span>
+                                  </div>
+                              </div>
+                              
+                              <div>
+                                  <label className="label-input">STS 30 segundos (Repeticiones)</label>
+                                  <div className="flex items-center gap-2">
+                                      <input type="number" className="input-std text-lg" value={metrics.sts_30_seg_reps} onChange={e => setMetrics({...metrics, sts_30_seg_reps: Number(e.target.value)})} />
+                                      <span className="text-gray-500 font-bold">reps</span>
+                                  </div>
+                              </div>
+
+                              <div>
+                                  <label className="label-input">Calidad de Vida (EQ-5D Puntaje 0-100)</label>
+                                  <input type="number" className="input-std" value={metrics.cuestionario_eq5d_puntaje} onChange={e => setMetrics({...metrics, cuestionario_eq5d_puntaje: Number(e.target.value)})} />
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* CARD 3: Calculadora de Progresión */}
+                      <div className="md:col-span-2 bg-green-50 p-5 rounded-xl border border-green-200">
+                           <h4 className="font-bold text-green-900 mb-2">Calculadora de Progresión (Criterio: Aumentar 10%)</h4>
+                           <div className="text-sm text-green-800 mb-4">
+                               Si el paciente camina 10 min continuos sin dolor o alcanza el 80% de FC Reserva, sugerir aumento.
+                           </div>
+                           <div className="flex gap-4 items-center bg-white p-3 rounded-lg border border-green-100">
+                                <div className="flex-1">
+                                    <div className="text-xs text-gray-500 font-bold">Meta Actual Pasos</div>
+                                    <div className="text-xl font-bold">{stepGoal}</div>
+                                </div>
+                                <div className="text-green-500 text-2xl font-bold">➔</div>
+                                <div className="flex-1">
+                                    <div className="text-xs text-green-600 font-bold">Nueva Meta Sugerida (+10%)</div>
+                                    <div className="text-xl font-bold text-green-700">{Math.round(stepGoal * 1.1)}</div>
+                                </div>
+                                <button 
+                                    className="px-4 py-2 bg-green-600 text-white font-bold rounded shadow-sm hover:bg-green-700"
+                                    onClick={() => setStepGoal(Math.round(stepGoal * 1.1))}
+                                >
+                                    Aplicar
+                                </button>
+                           </div>
+                      </div>
+
                   </div>
-                  <button className="w-full py-4 bg-blue-800 text-white font-bold rounded-xl shadow-lg hover:bg-blue-900 mt-4" onClick={handleSaveMetrics}>GUARDAR DATOS CLÍNICOS</button>
+
+                  <button 
+                      className="w-full py-4 bg-blue-800 text-white font-bold rounded-xl shadow-lg hover:bg-blue-900 mt-4"
+                      onClick={handleSaveMetrics}
+                  >
+                      GUARDAR DATOS CLÍNICOS
+                  </button>
               </div>
           )}
 
         </div>
       </div>
       
+      {/* Mini Styles for this component */}
       <style>{`
-        .label-input { display: block; font-size: 0.75rem; font-weight: 700; color: #666; margin-bottom: 4px; text-transform: uppercase; }
-        .input-std { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-weight: 600; }
+        .label-input {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #666;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .input-std {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-weight: 600;
+        }
       `}</style>
     </div>
   );

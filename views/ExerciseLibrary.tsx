@@ -117,7 +117,8 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       <div className="p-4 max-w-7xl mx-auto">
         <h2 className="text-lg font-bold text-gray-700 mb-4">Tu Rutina Diaria</h2>
 
-        {/* RESPONSIVE GRID */}
+        {/* RESPONSIVE GRID: 1 column mobile, 2 tablet, 3 desktop */}
+        {/* SOLUCIÓN: Grid vertical en vez de scroll horizontal */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             
             {assignments.map(assign => (
@@ -142,7 +143,6 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                         <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
                             <span className="text-6xl drop-shadow-lg opacity-90 text-white">▶️</span>
                         </div>
-                        {/* THE BADGE NOW REFLECTS DYNAMIC NUMERO_ORDEN */}
                         <div className="absolute top-3 left-3 bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md text-sm border-2 border-white">
                             {assign.video.numero_orden}
                         </div>
