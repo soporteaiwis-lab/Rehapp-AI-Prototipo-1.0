@@ -495,6 +495,24 @@
         justify-content: space-between;
         align-items: center;
       }
+
+      /* UTILS FOR NETFLIX SLIDER */
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .snap-x {
+        scroll-snap-type: x mandatory;
+      }
+      .snap-center {
+        scroll-snap-align: center;
+      }
+      .snap-start {
+        scroll-snap-align: start;
+      }
     </style>
   <script type="importmap">
 {
