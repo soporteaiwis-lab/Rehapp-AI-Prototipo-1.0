@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { User, ExerciseAssignment, ExerciseSessionLog } from '../types';
 import { api } from '../services/api';
 import { VideoPlayerModal } from '../components/VideoPlayerModal';
@@ -10,6 +10,9 @@ interface Props {
 export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const [assignments, setAssignments] = useState<ExerciseAssignment[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Ref for horizontal scrolling
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // State for modals
   const [selectedVideoAssignment, setSelectedVideoAssignment] = useState<ExerciseAssignment | null>(null);
@@ -30,6 +33,18 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   useEffect(() => {
     loadExercises();
   }, [user.id]);
+
+  // Scroll Handler for Desktop Arrows
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+        const { current } = scrollContainerRef;
+        const scrollAmount = 320; // Aproximadamente el ancho de una tarjeta
+        current.scrollBy({
+            left: direction === 'left' ? -scrollAmount : scrollAmount,
+            behavior: 'smooth'
+        });
+    }
+  };
 
   // Handle completion (via Modal or Quick Check)
   const handleLogSession = async (logData: Partial<ExerciseSessionLog>, videoIdParam?: string) => {
@@ -151,11 +166,35 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       )}
 
       {/* HORIZONTAL SLIDER (NETFLIX STYLE) */}
-      <div className="mt-4">
+      <div className="mt-4 relative group">
         <h2 className="px-4 text-lg font-bold text-gray-700 mb-3">Tu Rutina Diaria</h2>
         
+        {/* DESKTOP NAVIGATION ARROWS (Hidden on mobile) */}
+        {assignments.length > 1 && (
+            <>
+                <button 
+                    onClick={() => scroll('left')}
+                    className="hidden sm:flex absolute left-2 top-[55%] -translate-y-1/2 z-20 w-12 h-12 bg-white/90 rounded-full shadow-lg items-center justify-center text-blue-600 font-bold hover:bg-blue-50 border border-gray-100 transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="Scroll left"
+                >
+                    ◀
+                </button>
+                <button 
+                    onClick={() => scroll('right')}
+                    className="hidden sm:flex absolute right-2 top-[55%] -translate-y-1/2 z-20 w-12 h-12 bg-white/90 rounded-full shadow-lg items-center justify-center text-blue-600 font-bold hover:bg-blue-50 border border-gray-100 transition-all opacity-0 group-hover:opacity-100"
+                    aria-label="Scroll right"
+                >
+                    ▶
+                </button>
+            </>
+        )}
+
         {/* SCROLL CONTAINER */}
-        <div className="flex overflow-x-auto gap-4 px-4 pb-8 snap-x snap-mandatory hide-scrollbar">
+        <div 
+            ref={scrollContainerRef}
+            className="flex overflow-x-auto gap-4 px-4 pb-12 snap-x snap-mandatory hide-scrollbar scroll-smooth"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+        >
             {assignments.map(assign => (
                 <div 
                     key={assign.id} 
@@ -169,7 +208,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                     )}
 
                     {/* Thumbnail Area */}
-                    <div className="relative h-44 bg-gray-200" onClick={() => setSelectedVideoAssignment(assign)}>
+                    <div className="relative h-44 bg-gray-200 cursor-pointer" onClick={() => setSelectedVideoAssignment(assign)}>
                         <img 
                             src={`https://img.youtube.com/vi/${assign.video.youtube_video_id}/mqdefault.jpg`} 
                             className={`w-full h-full object-cover ${assign.completed_today ? 'grayscale opacity-70' : ''}`}
@@ -223,8 +262,8 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                 </div>
             ))}
             
-            {/* Spacer for right padding in scroll */}
-            <div className="w-2 shrink-0"></div>
+            {/* Spacer for right padding in scroll to ensure last item is visible */}
+            <div className="w-6 shrink-0 h-1"></div>
         </div>
       </div>
 
