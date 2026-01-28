@@ -80,51 +80,127 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     loadData();
   }, [patient]);
 
-  // 2. Render General Chart
+  // 2. Render General Chart (REAL DATA LOGIC)
   useEffect(() => {
     if (activeTab === 'general' && generalChartRef.current) {
         if (generalChartInstance.current) generalChartInstance.current.destroy();
+
+        // --- DATA PROCESSING FOR CHART ---
+        const dayLabels = [];
+        const stepsData = [];
+        const painData = [];
+        
+        // Generate last 7 days
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            // Label (e.g., "Lun")
+            const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' });
+            dayLabels.push(dayName.charAt(0).toUpperCase() + dayName.slice(1));
+
+            // 1. Sum Steps for this date
+            const dailySteps = walkSessions
+                .filter(s => s.date.startsWith(dateStr))
+                .reduce((acc, curr) => acc + curr.steps, 0);
+            stepsData.push(dailySteps);
+
+            // 2. Max Pain for this date (Walk OR Exercise)
+            const maxWalkPain = Math.max(0, ...walkSessions
+                .filter(s => s.date.startsWith(dateStr))
+                .map(s => s.painLevel));
+            
+            const maxExercisePain = Math.max(0, ...exerciseLogs
+                .filter(l => l.fecha_realizacion === dateStr)
+                .map(l => l.dolor_durante_ejercicio || 0));
+
+            painData.push(Math.max(maxWalkPain, maxExercisePain));
+        }
 
         const ctx = generalChartRef.current.getContext('2d');
         if (ctx) {
             generalChartInstance.current = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'],
+                labels: dayLabels,
                 datasets: [
                 {
                     label: 'Pasos Diarios',
-                    data: [1200, 3000, 4500, 2000, 0, 4600, 4800], // Mock for now, in real app use walkSessions
+                    data: stepsData,
                     borderColor: '#4CAF50',
                     backgroundColor: 'rgba(76, 175, 80, 0.1)',
                     yAxisID: 'y',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#4CAF50'
                 },
                 {
-                    label: 'Nivel Dolor (EVA)',
-                    data: [2, 3, 2, 5, 0, 3, 1],
+                    label: 'Nivel Dolor Máx (EVA)',
+                    data: painData,
                     borderColor: '#f44336',
                     backgroundColor: 'transparent',
                     yAxisID: 'y1',
                     borderDash: [5, 5],
-                    tension: 0.1
+                    tension: 0.1,
+                    pointStyle: 'rectRot',
+                    pointRadius: 6,
+                    pointBackgroundColor: '#f44336'
                 }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y;
+                                    if (context.datasetIndex === 0) label += ' pasos';
+                                    if (context.datasetIndex === 1) label += ' pts';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Pasos' } },
-                y1: { type: 'linear', display: true, position: 'right', min: 0, max: 10, title: { display: true, text: 'EVA' }, grid: { drawOnChartArea: false } },
+                y: { 
+                    type: 'linear', 
+                    display: true, 
+                    position: 'left', 
+                    title: { display: true, text: 'Pasos' },
+                    beginAtZero: true,
+                    suggestedMax: patient.meta_pasos + 1000
+                },
+                y1: { 
+                    type: 'linear', 
+                    display: true, 
+                    position: 'right', 
+                    min: 0, 
+                    max: 10, 
+                    title: { display: true, text: 'EVA' }, 
+                    grid: { drawOnChartArea: false },
+                    ticks: { stepSize: 1 }
+                },
                 }
             }
             });
         }
     }
     return () => { if (generalChartInstance.current) generalChartInstance.current.destroy(); };
-  }, [activeTab]);
+  }, [activeTab, walkSessions, exerciseLogs, patient.meta_pasos]); // Dependencies updated to redraw on data change
 
   // 3. Render Difficulty Chart (Kinesiology)
   useEffect(() => {
