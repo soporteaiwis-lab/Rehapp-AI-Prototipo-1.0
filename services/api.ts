@@ -6,6 +6,13 @@ import { storageService } from './storageService';
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-3-flash-preview';
 
+// Helper for consistent Local Date (YYYY-MM-DD) handling across the app
+export const getLocalDateString = (): string => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000; 
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+};
+
 // MOCK DATA FOR VIDEOS
 export const MOCK_VIDEOS: ExerciseVideo[] = [
   { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: 'Ejercicio básico de fuerza', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
@@ -115,8 +122,6 @@ export const api = {
   },
 
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
-    await new Promise(r => setTimeout(r, 200));
-    
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
@@ -132,17 +137,19 @@ export const api = {
         }
     }
 
-    // Fix time zone offset issue by using local date string comparison
-    // But for simplicity in prototype, stick to YYYY-MM-DD string match
-    const today = new Date().toISOString().split('T')[0];
+    // Use LOCAL DATE string to avoid timezone bugs
+    const today = getLocalDateString();
+    
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
+        // Strict check: Patient + Video + Date (Local) + Completed status
+        // WE FORCE A LOOSE CHECK on 'completado' just in case (!!l.completado)
         const todaysLog = logs.find(l => 
             l.patient_id === patientId && 
             l.video_id === video.id && 
             l.fecha_realizacion === today &&
-            l.completado
+            !!l.completado
         );
 
         return {
@@ -157,22 +164,33 @@ export const api = {
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
+    // FORCE CONSISTENT DATE: We ignore what the client sent and calculate 'today' right here.
+    // This ensures 'logExerciseSession' and 'getAssignedExercises' ALWAYS match.
+    const today = getLocalDateString();
+    
+    // Create strict object to save
+    const logToSave: ExerciseSessionLog = {
+        ...log,
+        fecha_realizacion: today,
+        completado: true // Force true
+    };
+
     // 1. Read existing
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     // 2. Check overlap
     const existingIndex = logs.findIndex(l => 
-        l.patient_id === log.patient_id && 
-        l.video_id === log.video_id && 
-        l.fecha_realizacion === log.fecha_realizacion
+        l.patient_id === logToSave.patient_id && 
+        l.video_id === logToSave.video_id && 
+        l.fecha_realizacion === logToSave.fecha_realizacion
     );
 
-    // 3. Update or Push (Ensuring Timestamp is saved)
+    // 3. Update or Push
     if (existingIndex >= 0) {
-        logs[existingIndex] = log; // Update with new timestamp/data
+        logs[existingIndex] = logToSave;
     } else {
-        logs.push(log);
+        logs.push(logToSave);
     }
     
     // 4. Save to LocalStorage (Persistent)
@@ -195,7 +213,6 @@ export const api = {
     return { success: true };
   },
 
-  // NEW METHOD: Updates the patient's step goal in the main user storage
   updatePatientTreatment: async (patientId: string, stepGoal: number) => {
     await storageService.updatePatientField(patientId, 'dailyStepGoal', stepGoal);
     return { success: true };

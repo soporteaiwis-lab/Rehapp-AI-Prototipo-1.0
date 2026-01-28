@@ -26,11 +26,13 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const handleLogSession = async (logData: Partial<ExerciseSessionLog>) => {
     if (!selectedVideoAssignment) return;
 
+    // We do NOT set 'fecha_realizacion' here anymore. 
+    // We let api.logExerciseSession handle it to guarantee it matches 'today' exactly.
     const fullLog: ExerciseSessionLog = {
       patient_id: user.id,
       video_id: selectedVideoAssignment.video_id,
-      fecha_realizacion: new Date().toISOString().split('T')[0],
-      timestamp: new Date().toISOString(), // Add exact time
+      fecha_realizacion: '', // Filled by API
+      timestamp: new Date().toISOString(),
       series_completadas: logData.series_completadas || 0,
       repeticiones_completadas: logData.repeticiones_completadas || 0,
       dificultad_percibida: logData.dificultad_percibida || 0,
@@ -43,7 +45,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     if (result.success) {
       alert("¡Ejercicio registrado correctamente! 🎉");
       setSelectedVideoAssignment(null);
-      await loadExercises(); // Refresh UI immediately to show checkmark
+      await loadExercises(); // Trigger full refresh of the list
     } else {
       alert(result.message || "Error al registrar.");
     }

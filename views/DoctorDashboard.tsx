@@ -288,7 +288,7 @@ export const DoctorDashboard: React.FC = () => {
       {selectedPatient && (
         <PatientDetailModal 
             patient={selectedPatient} 
-            onClose={() => setSelectedPatient(null)} 
+            onClose={() => { setSelectedPatient(null); loadData(); }} // RELOAD DATA ON CLOSE
         />
       )}
     </div>
