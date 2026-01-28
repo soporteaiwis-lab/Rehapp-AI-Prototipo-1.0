@@ -1,109 +1,177 @@
-import { Role, User, WalkSession } from '../types';
-
-const USERS_KEY = 'rehapp_users_db';
-const SESSION_KEY = 'rehapp_sessions';
-
-/*
-  ADVERTENCIA IMPORTANTE PARA EL USUARIO:
-  Este servicio utiliza 'localStorage'. Los datos se guardan SOLO en el dispositivo actual.
-  Si ingresa en el celular, no verá los datos del PC y viceversa.
-  Para sincronización real, se debe configurar la conexión a Supabase en 'supabase-config.js'.
-*/
-
-// 1. Initial Seed Data (Only used if DB is empty)
-const INITIAL_USERS: User[] = [
-  { id: '12345678', name: 'Paciente Pruebas', role: Role.PATIENT, age: 75, condition: 'EAP Moderada', dailyStepGoal: 4500 },
-  { id: '002', name: 'Juan Pérez (78 años)', role: Role.PATIENT, age: 78, condition: 'EAP Severa', dailyStepGoal: 3000 },
-  { id: '003', name: 'Maria González (72 años)', role: Role.PATIENT, age: 72, condition: 'EAP Moderada', dailyStepGoal: 5000 },
-  { id: 'd1', name: 'Dr. Silva (Kinesiólogo)', role: Role.DOCTOR, email: 'medico@test.com' },
-];
-
-// Helper to initialize DB
-const initDB = () => {
-  if (!localStorage.getItem(USERS_KEY)) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(INITIAL_USERS));
-  }
-};
+import { Role, User, WalkSession, ExerciseVideo } from '../types';
+import { supabase } from '../config/supabaseClient';
 
 export const storageService = {
   // --- AUTH & USER MANAGEMENT ---
 
   login: async (identifier: string): Promise<User | undefined> => {
-    initDB();
-    const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    // Para el prototipo, consultamos la tabla 'users' directamente
+    // En producción usaríamos supabase.auth.signInWithPassword
+    let query = supabase.from('users').select('*');
     
-    // Check if doctor email
     if (identifier.includes('@')) {
-         return users.find(u => u.role === Role.DOCTOR);
+        query = query.eq('email', identifier).eq('role', Role.DOCTOR);
+    } else {
+        query = query.eq('id', identifier).eq('role', Role.PATIENT);
     }
-    // Check patient ID (RUT)
-    return users.find(u => u.id === identifier && u.role === Role.PATIENT);
+    
+    const { data, error } = await query.single();
+    
+    if (error || !data) return undefined;
+
+    return {
+        id: data.id,
+        name: data.nombre,
+        role: data.role as Role,
+        age: data.edad,
+        condition: data.condicion,
+        dailyStepGoal: data.meta_pasos_diaria
+    };
   },
 
   getPatients: async (): Promise<User[]> => {
-    initDB();
-    const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    return users.filter(u => u.role === Role.PATIENT);
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', Role.PATIENT);
+        
+    if (error) {
+        console.error("Error fetching patients:", error);
+        return [];
+    }
+    
+    return data.map(u => ({
+        id: u.id,
+        name: u.nombre,
+        role: Role.PATIENT,
+        age: u.edad,
+        condition: u.condicion,
+        dailyStepGoal: u.meta_pasos_diaria
+    }));
   },
 
   addPatient: async (patient: User): Promise<void> => {
-    initDB();
-    const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    
-    if (users.some(u => u.id === patient.id)) {
-        throw new Error("El ID/RUT ya existe.");
-    }
-    
-    // Default goal for new patients
-    users.push({ ...patient, role: Role.PATIENT, dailyStepGoal: 3000 });
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const { error } = await supabase.from('users').insert({
+        id: patient.id,
+        nombre: patient.name,
+        role: Role.PATIENT,
+        edad: patient.age,
+        condicion: patient.condition,
+        meta_pasos_diaria: 3000
+    });
+    if (error) throw error;
   },
 
   updatePatient: async (updatedPatient: User): Promise<void> => {
-    initDB();
-    const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const index = users.findIndex(u => u.id === updatedPatient.id);
-    
-    if (index !== -1) {
-        users[index] = { ...users[index], ...updatedPatient };
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
+    const { error } = await supabase
+        .from('users')
+        .update({
+            nombre: updatedPatient.name,
+            edad: updatedPatient.age,
+            condicion: updatedPatient.condition
+        })
+        .eq('id', updatedPatient.id);
+    if (error) throw error;
   },
 
-  // Specific method to update a single field without needing the whole user object
   updatePatientField: async (userId: string, field: keyof User, value: any): Promise<void> => {
-    initDB();
-    const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const index = users.findIndex(u => u.id === userId);
+    // Map Frontend field names to DB column names
+    const dbFieldMap: any = {
+        'dailyStepGoal': 'meta_pasos_diaria',
+        'name': 'nombre',
+        'age': 'edad'
+    };
     
-    if (index !== -1) {
-        users[index] = { ...users[index], [field]: value };
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
+    const dbField = dbFieldMap[field] || field;
+
+    const { error } = await supabase
+        .from('users')
+        .update({ [dbField]: value })
+        .eq('id', userId);
+        
+    if (error) console.error("Error updating field:", error);
   },
 
   deletePatient: async (id: string): Promise<void> => {
-    initDB();
-    let users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    users = users.filter(u => u.id !== id);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) console.error("Error deleting patient:", error);
   },
 
   // --- SESSIONS (WALKING) ---
 
   saveSession: async (session: WalkSession): Promise<void> => {
-    const existing = await storageService.getSessions();
-    const updated = [session, ...existing];
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+    const { error } = await supabase.from('walk_sessions').insert({
+        patient_id: session.patientId,
+        date: session.date,
+        duration_seconds: session.durationSeconds,
+        steps: session.steps,
+        pain_level: session.painLevel,
+        stopped_due_to_pain: session.stoppedDueToPain
+    });
+    if (error) console.error("Error saving session:", error);
   },
 
   getSessions: async (): Promise<WalkSession[]> => {
-    const data = localStorage.getItem(SESSION_KEY);
-    return data ? JSON.parse(data) : [];
+    const { data, error } = await supabase.from('walk_sessions').select('*');
+    if (error) return [];
+    
+    return data.map(s => ({
+        id: s.id,
+        patientId: s.patient_id,
+        date: s.date,
+        durationSeconds: s.duration_seconds,
+        steps: s.steps,
+        painLevel: s.pain_level,
+        stoppedDueToPain: s.stopped_due_to_pain
+    }));
   },
 
   getSessionsByPatient: async (patientId: string): Promise<WalkSession[]> => {
-    const all = await storageService.getSessions();
-    return all.filter(s => s.patientId === patientId);
+    const { data, error } = await supabase
+        .from('walk_sessions')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('date', { ascending: false });
+        
+    if (error) return [];
+    
+    return data.map(s => ({
+        id: s.id,
+        patientId: s.patient_id,
+        date: s.date,
+        durationSeconds: s.duration_seconds,
+        steps: s.steps,
+        painLevel: s.pain_level,
+        stoppedDueToPain: s.stopped_due_to_pain
+    }));
+  },
+
+  // --- VIDEO MANAGEMENT ---
+  
+  getVideos: async (): Promise<ExerciseVideo[]> => {
+    const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .order('numero_orden', { ascending: true });
+        
+    if (error) {
+        console.error("Error fetching videos:", error);
+        return [];
+    }
+    return data as ExerciseVideo[];
+  },
+
+  saveVideo: async (video: ExerciseVideo): Promise<void> => {
+    // Upsert (Insert or Update based on ID)
+    const { error } = await supabase
+        .from('videos')
+        .upsert(video);
+        
+    if (error) console.error("Error saving video:", error);
+  },
+
+  deleteVideo: async (id: string): Promise<void> => {
+    const { error } = await supabase.from('videos').delete().eq('id', id);
+    if (error) console.error("Error deleting video:", error);
   }
 };
