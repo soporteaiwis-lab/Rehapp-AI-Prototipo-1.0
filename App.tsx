@@ -16,7 +16,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   
   // Login State
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState(''); // Email or ID
   const [password, setPassword] = useState('');
 
   // Mock Login Handler
@@ -24,13 +24,29 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate finding user based on email (prototype logic)
-    const role = email.includes('medico') ? Role.DOCTOR : Role.PATIENT;
+    // Logic for prototype login
+    let loggedUser: User | undefined;
+
+    // 1. Doctor Login
+    if (identifier.toLowerCase().includes('medico')) {
+        loggedUser = await storageService.login(identifier);
+    } 
+    // 2. Test Patient Login (Specific credentials requested)
+    else if (identifier === '12345678' && password === '1234') {
+        loggedUser = await storageService.login('12345678');
+    }
+    // 3. Fallback for other patients in mock list (p1, p2) just by ID
+    else {
+        loggedUser = await storageService.login(identifier);
+    }
     
-    setTimeout(async () => {
-      const u = await storageService.login(role);
-      setUser(u);
-      setView('home');
+    setTimeout(() => {
+      if (loggedUser) {
+        setUser(loggedUser);
+        setView('home');
+      } else {
+        alert("Credenciales incorrectas. Para pruebas use ID: 12345678 y Pass: 1234");
+      }
       setLoading(false);
     }, 800);
   };
@@ -38,7 +54,7 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     setView('home');
-    setEmail('');
+    setIdentifier('');
     setPassword('');
   };
 
@@ -53,20 +69,20 @@ export default function App() {
         </div>
 
         <form onSubmit={handleLogin} className="w-full max-w-md mx-auto">
-          <label className="block text-lg font-bold text-gray-700 mb-2">Correo Electrónico</label>
+          <label className="block text-lg font-bold text-gray-700 mb-2">RUT o ID de Paciente</label>
           <input 
-            type="email" 
+            type="text" 
             className="input-grande"
-            placeholder="ejemplo@correo.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Ej: 12345678"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
           />
 
           <label className="block text-lg font-bold text-gray-700 mb-2">Contraseña</label>
           <input 
             type="password" 
             className="input-grande"
-            placeholder="••••••"
+            placeholder="••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -81,10 +97,10 @@ export default function App() {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-gray-400 text-lg">¿Olvidó su contraseña?</p>
+          <p className="text-gray-400 text-lg mb-4">¿Necesita ayuda?</p>
           <button 
-             onClick={() => { setEmail('medico@test.com'); }}
-             className="text-sm text-gray-300 mt-10 underline"
+             onClick={() => { setIdentifier('medico@test.com'); setPassword('admin'); }}
+             className="text-sm text-gray-300 underline"
           >
             Acceso Médico (Demo)
           </button>

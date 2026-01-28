@@ -2,6 +2,7 @@ import { Role, User, WalkSession } from '../types';
 
 // Mock Data
 const MOCK_USERS: User[] = [
+  { id: '12345678', name: 'Paciente Pruebas', role: Role.PATIENT, age: 75, condition: 'EAP Moderada' },
   { id: 'p1', name: 'Juan Pérez (78 años)', role: Role.PATIENT, age: 78, condition: 'EAP Severa' },
   { id: 'p2', name: 'Maria González (72 años)', role: Role.PATIENT, age: 72, condition: 'EAP Moderada' },
   { id: 'd1', name: 'Dr. Silva (Kinesiólogo)', role: Role.DOCTOR },
@@ -11,9 +12,13 @@ const SESSION_KEY = 'rehapp_sessions';
 
 export const storageService = {
   // Simulate Auth
-  login: async (role: Role): Promise<User> => {
-    // Return first user of that role for prototype simplicity
-    return MOCK_USERS.find(u => u.role === role) || MOCK_USERS[0];
+  login: async (identifier: string): Promise<User | undefined> => {
+    // Check if doctor email
+    if (identifier.includes('@')) {
+         return MOCK_USERS.find(u => u.role === Role.DOCTOR);
+    }
+    // Check patient ID
+    return MOCK_USERS.find(u => u.id === identifier && u.role === Role.PATIENT);
   },
 
   getPatients: async (): Promise<User[]> => {
