@@ -1,0 +1,7 @@
+{
+  "name": "Rehapp AI Prototipo 1.0",
+  "description": "Plataforma de telerehabilitación para pacientes con EAP (Enfermedad Arterial Periférica).",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

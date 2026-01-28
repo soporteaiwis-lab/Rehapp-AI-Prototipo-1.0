@@ -1,0 +1,32 @@
+{
+  "name": "rehapp-uach-prototype",
+  "version": "1.0.0",
+  "description": "Prototipo de Telerehabilitación para EAP - Universidad Austral de Chile",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required for this prototype phase'",
+    "test": "echo 'Error: no test specified' && exit 1"
+  },
+  "keywords": [
+    "ehealth",
+    "rehabilitation",
+    "uach",
+    "gemini",
+    "supabase"
+  ],
+  "author": "Equipo de Desarrollo Rehapp",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.39.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "@google/genai": "^0.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rehapp - Telerehabilitación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary-green: #4CAF50;
+        --dark-green: #45a049;
+        --primary-red: #f44336;
+        --dark-red: #da190b;
+        --primary-blue: #2196F3;
+      }
+      
+      body { 
+        font-family: 'Inter', sans-serif; 
+        overscroll-behavior-y: none;
+        background-color: #f8f9fa;
+      }
+
+      /* UX CRÍTICO ADULTOS MAYORES */
+      
+      .btn-gigante {
+        width: 100%;
+        height: 120px;
+        font-size: 28px;
+        font-weight: 800;
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        transition: transform 0.1s, box-shadow 0.1s;
+        cursor: pointer;
+      }
+      .btn-gigante:active {
+        transform: scale(0.98);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      }
+
+      .btn-gigante.verde {
+        background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+        color: white;
+      }
+
+      .btn-gigante.rojo {
+        background: linear-gradient(135deg, var(--primary-red), var(--dark-red));
+        color: white;
+      }
+
+      .btn-secundario {
+        width: 100%;
+        height: 70px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 15px;
+        font-size: 20px;
+        font-weight: 600;
+        color: #555;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      }
+
+      .valor-grande {
+        font-size: 48px;
+        font-weight: 800;
+        color: var(--primary-blue);
+        line-height: 1.1;
+      }
+
+      .card-metric {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        text-align: center;
+      }
+
+      .pulse {
+        animation: pulse-animation 2s infinite;
+      }
+
+      @keyframes pulse-animation {
+        0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+        70% { box-shadow: 0 0 0 20px rgba(244, 67, 54, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+      }
+
+      /* EVA Scale Grid */
+      .escala-eva {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 10px;
+      }
+      
+      .eva-btn {
+        background: white;
+        border: 3px solid #ddd;
+        border-radius: 15px;
+        height: 80px;
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+      
+      .eva-btn.selected {
+        border-color: var(--primary-blue);
+        background-color: #e3f2fd;
+        transform: scale(1.05);
+      }
+
+      /* Inputs for seniors */
+      .input-grande {
+        width: 100%;
+        height: 60px;
+        font-size: 20px;
+        padding: 0 16px;
+        border: 2px solid #ccc;
+        border-radius: 12px;
+        margin-bottom: 16px;
+      }
+
+      /* --- DOCTOR DASHBOARD STYLES --- */
+      
+      .dashboard-medico {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .alerta-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border-top: 5px solid #ccc;
+      }
+
+      .alerta-card.critica { border-top-color: var(--primary-red); }
+      .alerta-card.warning { border-top-color: #ff9800; }
+      .alerta-card.ok { border-top-color: var(--primary-green); }
+
+      .alerta-card .numero { font-size: 40px; font-weight: 800; line-height: 1; }
+      .alerta-card .texto { font-size: 14px; font-weight: 600; color: #666; margin-top: 8px; }
+
+      .tabla-pacientes {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+        margin-top: 20px;
+      }
+
+      .tabla-pacientes th {
+        text-align: left;
+        padding: 12px 16px;
+        color: #888;
+        font-size: 12px;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .tabla-pacientes tbody tr {
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: transform 0.1s;
+      }
+      
+      .tabla-pacientes tbody tr:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+
+      .tabla-pacientes td {
+        padding: 16px;
+        font-size: 15px;
+        color: #333;
+      }
+
+      .tabla-pacientes td:first-child {
+        border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+      }
+      .tabla-pacientes td:last-child {
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+      }
+
+      .alerta-critica {
+        background-color: #fff5f5 !important;
+        border-left: 4px solid var(--primary-red);
+      }
+      .alerta-warning {
+        background-color: #fffbf2 !important;
+        border-left: 4px solid #ff9800;
+      }
+
+      .eva-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 12px;
+        display: inline-block;
+      }
+      .eva-badge.eva-0 { background-color: #e8f5e9; color: #2e7d32; }
+      .eva-badge.eva-5 { background-color: #fff3e0; color: #ef6c00; }
+      .eva-badge.eva-8, .eva-badge.eva-9, .eva-badge.eva-10 { background-color: #ffebee; color: #c62828; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "chart.js/auto": "https://esm.sh/chart.js@4.4.1/auto",
+    "chart.js/": "https://esm.sh/chart.js@^4.5.1/"
+  }
+}
+</script>
+</head>
+  <body class="select-none">
+    <div id="root"></div>
+  </body>
+</html>
