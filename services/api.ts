@@ -9,6 +9,7 @@ const model = 'gemini-3-flash-preview';
 // Helper for consistent Local Date (YYYY-MM-DD) handling across the app
 export const getLocalDateString = (): string => {
     const d = new Date();
+    // Use offset to get local YYYY-MM-DD
     const offset = d.getTimezoneOffset() * 60000; 
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
@@ -78,14 +79,12 @@ export const api = {
   getDoctorDashboard: async (doctorId: string): Promise<PatientSummary[]> => {
     const patients = await storageService.getPatients();
     const allWalkSessions = await storageService.getSessions();
-    
-    // Get Exercise Logs manually from LS
     const logsJson = localStorage.getItem(LOGS_KEY);
     const allExerciseLogs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     return patients.map(p => {
         const pWalkSessions = allWalkSessions.filter(s => s.patientId === p.id);
-        const pExerciseLogs = allExerciseLogs.filter(l => l.patient_id === p.id);
+        const pExerciseLogs = allExerciseLogs.filter(l => String(l.patient_id) === String(p.id));
         const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
 
         const weeklyCompliance = pWalkSessions.length + uniqueExerciseDays;
@@ -115,13 +114,13 @@ export const api = {
   },
 
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
+    // 1. Force refresh from localStorage to ensure we have latest logs
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
+    
+    // 2. Get assignments
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
-    
-    // Default assignments
     let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
-    
     if (assignmentsJson) {
         const allAssignments = JSON.parse(assignmentsJson);
         const patientData = allAssignments[patientId];
@@ -130,20 +129,22 @@ export const api = {
         }
     }
 
+    // 3. Strict Date Matching
     const today = getLocalDateString();
+    
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
-        // Robust check: ensure patient ID matches as string and date is exactly today
+        // STRICT STRING COMPARISON FOR IDs
         const todaysLog = logs.find(l => 
             String(l.patient_id) === String(patientId) && 
-            l.video_id === video.id && 
+            String(l.video_id) === String(video.id) && 
             l.fecha_realizacion === today &&
             l.completado === true
         );
 
         return {
-            id: `assign_${video.id}_${today}`, // Add date to ID to force re-render on day change
+            id: `assign_${video.id}_${today}`, 
             patient_id: patientId,
             video_id: video.id,
             video: video,
@@ -154,29 +155,32 @@ export const api = {
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
+    // 1. Force TODAY'S date to match retrieval logic exactly
     const today = getLocalDateString();
     
     const logToSave: ExerciseSessionLog = {
         ...log,
-        patient_id: String(log.patient_id), // Ensure string
-        fecha_realizacion: today,
+        patient_id: String(log.patient_id),
+        video_id: String(log.video_id),
+        fecha_realizacion: today, // OVERWRITE client date to ensure consistency
         completado: true
     };
 
+    // 2. Get current logs
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
-    // Remove any existing log for this video/day to overwrite (prevent duplicates)
+    // 3. Remove existing log for this specific exercise today (upsert behavior)
     const filteredLogs = logs.filter(l => 
         !(String(l.patient_id) === String(logToSave.patient_id) && 
-          l.video_id === logToSave.video_id && 
+          String(l.video_id) === String(logToSave.video_id) && 
           l.fecha_realizacion === logToSave.fecha_realizacion)
     );
 
-    // Add new log
+    // 4. Add new log
     filteredLogs.push(logToSave);
     
-    // Save
+    // 5. Save persistently
     localStorage.setItem(LOGS_KEY, JSON.stringify(filteredLogs));
     
     return { success: true };

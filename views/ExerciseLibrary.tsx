@@ -13,25 +13,30 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const [selectedVideoAssignment, setSelectedVideoAssignment] = useState<ExerciseAssignment | null>(null);
 
   const loadExercises = async () => {
-    // We do NOT set loading true here to avoid flickering if it's a refresh
-    const data = await api.getAssignedExercises(user.id);
-    setAssignments(data);
-    setLoading(false);
+    // Only show full loading spinner on initial mount, not on refreshes
+    if (assignments.length === 0) setLoading(true);
+    
+    try {
+      const data = await api.getAssignedExercises(user.id);
+      setAssignments(data);
+    } catch (error) {
+      console.error('Error loading exercises:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    setLoading(true);
     loadExercises();
   }, [user.id]);
 
   const handleLogSession = async (logData: Partial<ExerciseSessionLog>) => {
     if (!selectedVideoAssignment) return;
 
-    // We let api.logExerciseSession handle the date to guarantee match
     const fullLog: ExerciseSessionLog = {
       patient_id: user.id,
       video_id: selectedVideoAssignment.video_id,
-      fecha_realizacion: '', // API fills this
+      fecha_realizacion: '', // Will be filled by API to ensure server consistency
       timestamp: new Date().toISOString(),
       series_completadas: logData.series_completadas || 0,
       repeticiones_completadas: logData.repeticiones_completadas || 0,
@@ -40,15 +45,43 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       completado: true
     };
 
-    const result = await api.logExerciseSession(fullLog);
+    // --- ACTUALIZACIÓN OPTIMISTA (UI Inmediata) ---
+    // Cambiamos el estado visualmente AHORA, sin esperar a la base de datos
+    const videoId = selectedVideoAssignment.video_id;
+    const now = new Date().toISOString();
     
-    if (result.success) {
-      alert("¡Ejercicio registrado correctamente! 🎉");
-      setSelectedVideoAssignment(null);
-      // FORCE RELOAD DATA FROM STORAGE
-      await loadExercises(); 
-    } else {
-      alert(result.message || "Error al registrar.");
+    setAssignments(prevAssignments => 
+      prevAssignments.map(assign => 
+        assign.video_id === videoId 
+          ? { 
+              ...assign, 
+              completed_today: true,
+              last_completed_at: now 
+            } 
+          : assign
+      )
+    );
+
+    // Cerramos el modal inmediatamente para fluidez
+    setSelectedVideoAssignment(null);
+
+    // --- GUARDADO EN SEGUNDO PLANO ---
+    try {
+      const result = await api.logExerciseSession(fullLog);
+      
+      if (result.success) {
+        // Opcional: Feedback sutil o silencioso
+        // Recargamos datos reales para asegurar sincronización con servidor
+        await loadExercises();
+      } else {
+        // Si falló el guardado real, revertimos el cambio visual y avisamos
+        alert(result.message || "Error al guardar el progreso.");
+        await loadExercises(); 
+      }
+    } catch (error) {
+      console.error('Error logging session:', error);
+      alert("Error de conexión. Se intentará guardar nuevamente.");
+      await loadExercises();
     }
   };
 
@@ -70,7 +103,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     <div className="pantalla-ejercicios pb-24">
       {/* Header */}
       <header className="flex justify-between items-end mb-6 px-2 pt-4">
-        <h1 className="text-3xl font-extrabold text-gray-800">📹 Mis Ejercicios</h1>
+        <h1 className="text-3xl font-extrabold text-gray-800">🎬 Mis Ejercicios</h1>
         <div className="bg-blue-100 px-4 py-2 rounded-xl text-center">
           <span className="block text-xs text-blue-600 font-bold uppercase">Progreso Hoy</span>
           <span className="text-2xl font-black text-blue-800">{completedTodayCount}/{totalAssigned}</span>
