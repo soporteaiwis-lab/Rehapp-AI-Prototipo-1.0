@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 // 1. Project URL
 // 2. Anon Public Key
 // Pégalos aquí abajo para que la base de datos funcione.
+https://zrlhkfpzfuvqnsfowzam.supabase.co
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpybGhrZnB6ZnV2cW5zZm93emFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1ODk5OTUsImV4cCI6MjA4NTE2NTk5NX0.ykMejTMMKz3VQ6tdtndooDhXxh9ZEwOyZ-obZRdmd4Q
 
 // Helper to safely get env vars without crashing in browser if process is undefined
 const getEnv = (key: string, fallback: string) => {
