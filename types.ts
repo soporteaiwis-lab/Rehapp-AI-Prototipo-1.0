@@ -27,6 +27,21 @@ export interface ClinicalProfile {
   bmi?: number;
 }
 
+// NUEVO: Métricas Específicas del Ensayo Clínico (Basado en PDF)
+export interface ClinicalTrialMetrics {
+  fecha_evaluacion: string;
+  peso_kg: number;
+  imc: number;
+  fc_reposo: number;
+  fc_max_teorica: number; // 220 - edad
+  fc_reserva: number; // FCMax - FCReposo
+  itb_derecho: number; // Índice Tobillo Brazo
+  itb_izquierdo: number;
+  test_marcha_6min_metros: number; // Capacidad funcional
+  sts_30_seg_reps: number; // Fuerza EEII
+  cuestionario_eq5d_puntaje: number; // Calidad de vida
+}
+
 export interface TreatmentPlan {
   id: string;
   patientId: string;
@@ -71,6 +86,8 @@ export interface PatientSummary {
   alerta: boolean;
   ultimo_dolor_eva: number;
   alertas: string[];
+  // Summary of trial data
+  last_clinical_metrics?: ClinicalTrialMetrics;
 }
 
 export interface ChatMessage {
@@ -93,6 +110,7 @@ export interface ExerciseVideo {
   repeticiones_sugeridas: string;
   equipamiento_necesario: string[];
   nivel_dificultad: string;
+  duracion_estimada_minutos: number; // Nuevo para calcular volumen total
 }
 
 export interface ExerciseAssignment {

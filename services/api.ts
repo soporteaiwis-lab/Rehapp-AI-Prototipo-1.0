@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { User, Role, WalkSession, PainResponse, Recipe, PatientSummary, ExerciseAssignment, ExerciseVideo, ExerciseSessionLog } from '../types';
+import { User, Role, WalkSession, PainResponse, Recipe, PatientSummary, ExerciseAssignment, ExerciseVideo, ExerciseSessionLog, ClinicalTrialMetrics } from '../types';
 import { storageService } from './storageService';
 
 // Initialize Gemini
@@ -14,20 +14,21 @@ export const getLocalDateString = (): string => {
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
 
-// MOCK DATA FOR VIDEOS - ENSURING ALL 8 ARE PRESENT
+// MOCK DATA FOR VIDEOS - Updated with Estimated Duration for Volume Calculation (PDF requires 60 min total)
 export const MOCK_VIDEOS: ExerciseVideo[] = [
-  { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: 'Ejercicio básico de fuerza', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
-  { id: 'v2', numero_orden: 2, titulo: 'Remo con Banda Elástica', descripcion: 'Ejercicio de espalda y postura', youtube_video_id: 'J3VFboUbubo', tipo_ejercicio: 'resistencia', grupos_musculares: ['dorsal', 'trapecio'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica'], nivel_dificultad: 'intermedio' },
-  { id: 'v3', numero_orden: 3, titulo: 'Pararse y Sentarse', descripcion: 'Ejercicio funcional clásico', youtube_video_id: 'gWdgSzPrncU', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 8-12 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
-  { id: 'v4', numero_orden: 4, titulo: 'Extensión de Glúteo', descripcion: 'Fortalecimiento posterior', youtube_video_id: 'G00dG-33QqA', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['gluteos'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'intermedio' },
-  { id: 'v5', numero_orden: 5, titulo: 'Extensión de Cuádriceps (V1)', descripcion: 'Versión básica', youtube_video_id: 'pX7DEPwYXEE', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'principiante' },
-  { id: 'v6', numero_orden: 6, titulo: 'Extensión de Cuádriceps (V2)', descripcion: 'Versión con peso', youtube_video_id: 'zEa1Eq3yIsw', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['tobilleras', 'silla'], nivel_dificultad: 'intermedio' },
-  { id: 'v7', numero_orden: 7, titulo: 'Elevación de Talones', descripcion: 'Para pantorrillas y retorno venoso', youtube_video_id: '0caP82ZUo1I', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['pantorrillas'], repeticiones_sugeridas: '2-3 series • 15-20 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
-  { id: 'v8', numero_orden: 8, titulo: 'Curl de Bíceps', descripcion: 'Fuerza de brazos', youtube_video_id: '-FNnffnCPxE', tipo_ejercicio: 'resistencia', grupos_musculares: ['biceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'mancuernas'], nivel_dificultad: 'principiante' },
+  { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: 'Ejercicio básico de fuerza', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 5 },
+  { id: 'v2', numero_orden: 2, titulo: 'Remo con Banda Elástica', descripcion: 'Ejercicio de espalda y postura', youtube_video_id: 'J3VFboUbubo', tipo_ejercicio: 'resistencia', grupos_musculares: ['dorsal', 'trapecio'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica'], nivel_dificultad: 'intermedio', duracion_estimada_minutos: 6 },
+  { id: 'v3', numero_orden: 3, titulo: 'Pararse y Sentarse', descripcion: 'Ejercicio funcional clásico', youtube_video_id: 'gWdgSzPrncU', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 8-12 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 5 },
+  { id: 'v4', numero_orden: 4, titulo: 'Extensión de Glúteo', descripcion: 'Fortalecimiento posterior', youtube_video_id: 'G00dG-33QqA', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['gluteos'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'intermedio', duracion_estimada_minutos: 4 },
+  { id: 'v5', numero_orden: 5, titulo: 'Extensión de Cuádriceps (V1)', descripcion: 'Versión básica', youtube_video_id: 'pX7DEPwYXEE', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 4 },
+  { id: 'v6', numero_orden: 6, titulo: 'Extensión de Cuádriceps (V2)', descripcion: 'Versión con peso', youtube_video_id: 'zEa1Eq3yIsw', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['tobilleras', 'silla'], nivel_dificultad: 'intermedio', duracion_estimada_minutos: 5 },
+  { id: 'v7', numero_orden: 7, titulo: 'Elevación de Talones', descripcion: 'Para pantorrillas y retorno venoso', youtube_video_id: '0caP82ZUo1I', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['pantorrillas'], repeticiones_sugeridas: '2-3 series • 15-20 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 3 },
+  { id: 'v8', numero_orden: 8, titulo: 'Curl de Bíceps', descripcion: 'Fuerza de brazos', youtube_video_id: '-FNnffnCPxE', tipo_ejercicio: 'resistencia', grupos_musculares: ['biceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'mancuernas'], nivel_dificultad: 'principiante', duracion_estimada_minutos: 4 },
 ];
 
 const LOGS_KEY = 'rehapp_exercise_logs';
 const ASSIGNMENTS_KEY = 'rehapp_assignments';
+const CLINICAL_METRICS_KEY = 'rehapp_clinical_metrics';
 
 export const api = {
   startActivity: async (patientId: string, tipoActividad: string) => {
@@ -41,10 +42,10 @@ export const api = {
 
   reportPain: async (sessionId: string, nivelEva: number): Promise<PainResponse> => {
     if (nivelEva >= 8) {
-        return { accion: "ALTO_INMEDIATO", mensaje: "🛑 DESCANSA AHORA. El dolor es demasiado alto.", bloquear_app: true };
+        return { accion: "ALTO_INMEDIATO", mensaje: "🛑 DESCANSA AHORA. Según protocolo, debes esperar a que el dolor baje por completo antes de retomar.", bloquear_app: true };
     } 
     if (nivelEva >= 5) {
-        return { accion: "PRECAUCION", mensaje: "⚠️ Reduce la velocidad ahora.", bloquear_app: false };
+        return { accion: "PRECAUCION", mensaje: "⚠️ Reduce la velocidad. Estás entrando en zona de claudicación.", bloquear_app: false };
     }
     return { accion: "CONTINUAR", mensaje: "👍 Vas muy bien.", bloquear_app: false };
   },
@@ -80,14 +81,19 @@ export const api = {
     const patients = await storageService.getPatients();
     const allWalkSessions = await storageService.getSessions();
     const logsJson = localStorage.getItem(LOGS_KEY);
-    const allExerciseLogs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
+    const metricsJson = localStorage.getItem(CLINICAL_METRICS_KEY);
     
+    const allExerciseLogs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
+    const allMetrics = metricsJson ? JSON.parse(metricsJson) : {};
+
     return patients.map(p => {
         const pWalkSessions = allWalkSessions.filter(s => s.patientId === p.id);
         const pExerciseLogs = allExerciseLogs.filter(l => String(l.patient_id) === String(p.id));
         const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
-
-        const weeklyCompliance = pWalkSessions.length + uniqueExerciseDays;
+        
+        // Criterio PDF: "Mínimo 3 sesiones semanales" (Caminata + Ejercicio)
+        // Simplificamos: Asumimos sesiones de caminata como la base
+        const weeklyCompliance = pWalkSessions.length; 
         
         const maxWalkPain = Math.max(0, ...pWalkSessions.map(s => s.painLevel));
         const maxExercisePain = Math.max(0, ...pExerciseLogs.map(l => l.dolor_durante_ejercicio || 0));
@@ -98,7 +104,7 @@ export const api = {
 
         const alerts: string[] = [];
         if (lowCompliance) alerts.push("Baja adherencia (< 3 ses/sem)");
-        if (recentHighPain) alerts.push(`Dolor crítico reciente (EVA ${lastEva})`);
+        if (recentHighPain) alerts.push(`Claudicación Intensa (EVA ${lastEva})`);
 
         return {
             id: p.id,
@@ -108,17 +114,16 @@ export const api = {
             cumplimiento_semanal: weeklyCompliance,
             alerta: alerts.length > 0,
             ultimo_dolor_eva: lastEva,
-            alertas: alerts
+            alertas: alerts,
+            last_clinical_metrics: allMetrics[p.id] || null
         };
     });
   },
 
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
-    // 1. Force refresh from localStorage to ensure we have latest logs
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
-    // 2. Get assignments - Defaulting to ALL 8 videos for prototype
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
     if (assignmentsJson) {
@@ -129,13 +134,11 @@ export const api = {
         }
     }
 
-    // 3. Strict Date Matching
     const today = getLocalDateString();
     
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
-        // STRICT STRING COMPARISON FOR IDs and BOOLEAN CHECK for completado
         const todaysLog = logs.find(l => 
             String(l.patient_id) === String(patientId) && 
             String(l.video_id) === String(video.id) && 
@@ -155,33 +158,26 @@ export const api = {
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
-    // 1. Force TODAY'S date to match retrieval logic exactly
     const today = getLocalDateString();
     
     const logToSave: ExerciseSessionLog = {
         ...log,
         patient_id: String(log.patient_id),
         video_id: String(log.video_id),
-        fecha_realizacion: today, // OVERWRITE client date to ensure consistency
+        fecha_realizacion: today, 
         completado: true
     };
 
-    // 2. Get current logs
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
-    // 3. Remove existing log for this specific exercise today (upsert behavior)
-    // We remove any existing entry for this video+day to avoid duplicates or stale status
     const filteredLogs = logs.filter(l => 
         !(String(l.patient_id) === String(logToSave.patient_id) && 
           String(l.video_id) === String(logToSave.video_id) && 
           l.fecha_realizacion === logToSave.fecha_realizacion)
     );
 
-    // 4. Add new log
     filteredLogs.push(logToSave);
-    
-    // 5. Save persistently
     localStorage.setItem(LOGS_KEY, JSON.stringify(filteredLogs));
     
     return { success: true };
@@ -219,5 +215,21 @@ export const api = {
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     return logs.filter(l => String(l.patient_id) === String(patientId));
+  },
+
+  // NEW: Save Clinical Trial Metrics (ITB, 6MWT, etc.)
+  saveClinicalMetrics: async (patientId: string, metrics: ClinicalTrialMetrics) => {
+    const metricsJson = localStorage.getItem(CLINICAL_METRICS_KEY);
+    const allMetrics = metricsJson ? JSON.parse(metricsJson) : {};
+    
+    allMetrics[patientId] = metrics;
+    localStorage.setItem(CLINICAL_METRICS_KEY, JSON.stringify(allMetrics));
+    return { success: true };
+  },
+
+  getClinicalMetrics: async (patientId: string): Promise<ClinicalTrialMetrics | null> => {
+    const metricsJson = localStorage.getItem(CLINICAL_METRICS_KEY);
+    const allMetrics = metricsJson ? JSON.parse(metricsJson) : {};
+    return allMetrics[patientId] || null;
   }
 };
