@@ -125,7 +125,7 @@ export const DoctorDashboard: React.FC = () => {
                 </button>
             </div>
 
-            {/* VISTA MOVIL: TARJETAS (Visible solo en pantallas pequeñas) */}
+            {/* VISTA MOVIL: TARJETAS (SOLUCION: Visible solo en pantallas pequeñas) */}
             <div className="block sm:hidden divide-y">
                 {patients.length === 0 ? (
                     <div className="text-center p-8 text-gray-500">No hay pacientes.</div>
@@ -180,7 +180,7 @@ export const DoctorDashboard: React.FC = () => {
                 })}
             </div>
 
-            {/* VISTA ESCRITORIO: TABLA (Oculta en móviles) */}
+            {/* VISTA ESCRITORIO: TABLA (SOLUCION: Oculta en móviles) */}
             <div className="hidden sm:block overflow-x-auto">
                 <table className="tabla-pacientes w-full">
                     <thead>

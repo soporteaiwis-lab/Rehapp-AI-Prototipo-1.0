@@ -118,6 +118,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
         <h2 className="text-lg font-bold text-gray-700 mb-4">Tu Rutina Diaria</h2>
 
         {/* RESPONSIVE GRID: 1 column mobile, 2 tablet, 3 desktop */}
+        {/* SOLUCIÓN: Grid vertical en vez de scroll horizontal */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             
             {assignments.map(assign => (
