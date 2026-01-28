@@ -75,7 +75,6 @@ export const api = {
     }
   },
 
-  // UPDATED: Now fetches everything from Storage Service/LocalStorage
   getDoctorDashboard: async (doctorId: string): Promise<PatientSummary[]> => {
     const patients = await storageService.getPatients();
     const allWalkSessions = await storageService.getSessions();
@@ -85,18 +84,12 @@ export const api = {
     const allExerciseLogs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     return patients.map(p => {
-        // Stats Logic:
-        // 1. Walking Sessions
         const pWalkSessions = allWalkSessions.filter(s => s.patientId === p.id);
-        
-        // 2. Exercise Sessions (Unique Days)
         const pExerciseLogs = allExerciseLogs.filter(l => l.patient_id === p.id);
         const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
 
-        // Total compliance
         const weeklyCompliance = pWalkSessions.length + uniqueExerciseDays;
         
-        // 3. Pain Logic
         const maxWalkPain = Math.max(0, ...pWalkSessions.map(s => s.painLevel));
         const maxExercisePain = Math.max(0, ...pExerciseLogs.map(l => l.dolor_durante_ejercicio || 0));
         const lastEva = Math.max(maxWalkPain, maxExercisePain);
@@ -112,7 +105,7 @@ export const api = {
             id: p.id,
             nombre: p.name,
             edad: p.age || 70,
-            meta_pasos: p.dailyStepGoal || 4500, // READ FROM PERSISTED USER DATA
+            meta_pasos: p.dailyStepGoal || 4500,
             cumplimiento_semanal: weeklyCompliance,
             alerta: alerts.length > 0,
             ultimo_dolor_eva: lastEva,
@@ -126,7 +119,7 @@ export const api = {
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     
-    // Default: Assign ALL videos
+    // Default assignments
     let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
     
     if (assignmentsJson) {
@@ -137,23 +130,20 @@ export const api = {
         }
     }
 
-    // Use LOCAL DATE string to avoid timezone bugs
     const today = getLocalDateString();
-    
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
-        // Strict check: Patient + Video + Date (Local) + Completed status
-        // WE FORCE A LOOSE CHECK on 'completado' just in case (!!l.completado)
+        // Robust check: ensure patient ID matches as string and date is exactly today
         const todaysLog = logs.find(l => 
-            l.patient_id === patientId && 
+            String(l.patient_id) === String(patientId) && 
             l.video_id === video.id && 
             l.fecha_realizacion === today &&
-            !!l.completado
+            l.completado === true
         );
 
         return {
-            id: `assign_${video.id}`,
+            id: `assign_${video.id}_${today}`, // Add date to ID to force re-render on day change
             patient_id: patientId,
             video_id: video.id,
             video: video,
@@ -164,37 +154,30 @@ export const api = {
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
-    // FORCE CONSISTENT DATE: We ignore what the client sent and calculate 'today' right here.
-    // This ensures 'logExerciseSession' and 'getAssignedExercises' ALWAYS match.
     const today = getLocalDateString();
     
-    // Create strict object to save
     const logToSave: ExerciseSessionLog = {
         ...log,
+        patient_id: String(log.patient_id), // Ensure string
         fecha_realizacion: today,
-        completado: true // Force true
+        completado: true
     };
 
-    // 1. Read existing
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
-    // 2. Check overlap
-    const existingIndex = logs.findIndex(l => 
-        l.patient_id === logToSave.patient_id && 
-        l.video_id === logToSave.video_id && 
-        l.fecha_realizacion === logToSave.fecha_realizacion
+    // Remove any existing log for this video/day to overwrite (prevent duplicates)
+    const filteredLogs = logs.filter(l => 
+        !(String(l.patient_id) === String(logToSave.patient_id) && 
+          l.video_id === logToSave.video_id && 
+          l.fecha_realizacion === logToSave.fecha_realizacion)
     );
 
-    // 3. Update or Push
-    if (existingIndex >= 0) {
-        logs[existingIndex] = logToSave;
-    } else {
-        logs.push(logToSave);
-    }
+    // Add new log
+    filteredLogs.push(logToSave);
     
-    // 4. Save to LocalStorage (Persistent)
-    localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+    // Save
+    localStorage.setItem(LOGS_KEY, JSON.stringify(filteredLogs));
     
     return { success: true };
   },
@@ -230,6 +213,6 @@ export const api = {
   getPatientExerciseLogs: async (patientId: string): Promise<ExerciseSessionLog[]> => {
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
-    return logs.filter(l => l.patient_id === patientId);
+    return logs.filter(l => String(l.patient_id) === String(patientId));
   }
 };

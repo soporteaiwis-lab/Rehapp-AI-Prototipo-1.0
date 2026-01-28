@@ -13,25 +13,25 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const [selectedVideoAssignment, setSelectedVideoAssignment] = useState<ExerciseAssignment | null>(null);
 
   const loadExercises = async () => {
-    setLoading(true);
+    // We do NOT set loading true here to avoid flickering if it's a refresh
     const data = await api.getAssignedExercises(user.id);
     setAssignments(data);
     setLoading(false);
   };
 
   useEffect(() => {
+    setLoading(true);
     loadExercises();
   }, [user.id]);
 
   const handleLogSession = async (logData: Partial<ExerciseSessionLog>) => {
     if (!selectedVideoAssignment) return;
 
-    // We do NOT set 'fecha_realizacion' here anymore. 
-    // We let api.logExerciseSession handle it to guarantee it matches 'today' exactly.
+    // We let api.logExerciseSession handle the date to guarantee match
     const fullLog: ExerciseSessionLog = {
       patient_id: user.id,
       video_id: selectedVideoAssignment.video_id,
-      fecha_realizacion: '', // Filled by API
+      fecha_realizacion: '', // API fills this
       timestamp: new Date().toISOString(),
       series_completadas: logData.series_completadas || 0,
       repeticiones_completadas: logData.repeticiones_completadas || 0,
@@ -45,7 +45,8 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     if (result.success) {
       alert("¡Ejercicio registrado correctamente! 🎉");
       setSelectedVideoAssignment(null);
-      await loadExercises(); // Trigger full refresh of the list
+      // FORCE RELOAD DATA FROM STORAGE
+      await loadExercises(); 
     } else {
       alert(result.message || "Error al registrar.");
     }
