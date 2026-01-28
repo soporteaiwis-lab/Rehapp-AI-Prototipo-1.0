@@ -1,7 +1,8 @@
-import { Role, User, WalkSession } from '../types';
+import { Role, User, WalkSession, ExerciseVideo } from '../types';
 
 const USERS_KEY = 'rehapp_users_db';
 const SESSION_KEY = 'rehapp_sessions';
+const VIDEOS_KEY = 'rehapp_videos_db';
 
 /*
   ADVERTENCIA IMPORTANTE PARA EL USUARIO:
@@ -18,10 +19,81 @@ const INITIAL_USERS: User[] = [
   { id: 'd1', name: 'Dr. Silva (Kinesiólogo)', role: Role.DOCTOR, email: 'medico@test.com' },
 ];
 
+const INITIAL_VIDEOS: ExerciseVideo[] = [
+  {
+    id: 'v1',
+    numero_orden: 1,
+    titulo: 'Flexión Plantar (Puntillas)',
+    descripcion: 'Levantamiento de talones sosteniéndose de una silla o pared. Fundamental para activar la bomba muscular de la pantorrilla.',
+    youtube_video_id: 'JByo4Yh-1kI', 
+    tipo_ejercicio: 'Fuerza',
+    grupos_musculares: ['Pantorrillas', 'Gastrocnemio'],
+    repeticiones_sugeridas: '3 series de 10 repeticiones',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Bajo',
+    duracion_estimada_minutos: 5
+  },
+  {
+    id: 'v2',
+    numero_orden: 2,
+    titulo: 'Sentadilla en Silla (Sit to Stand)',
+    descripcion: 'Sentarse y pararse de una silla con control, manteniendo la espalda recta. Mejora fuerza de cuádriceps y glúteos.',
+    youtube_video_id: '52M4eQfQ2k0',
+    tipo_ejercicio: 'Fuerza',
+    grupos_musculares: ['Cuádriceps', 'Glúteos'],
+    repeticiones_sugeridas: '3 series de 8 repeticiones',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Medio',
+    duracion_estimada_minutos: 6
+  },
+  {
+    id: 'v3',
+    numero_orden: 3,
+    titulo: 'Extensión de Rodilla Sentado',
+    descripcion: 'Sentado en silla, extender la rodilla completamente y bajar lento. Fortalece cuádriceps sin impacto.',
+    youtube_video_id: 'yZg7s8zTzMg', 
+    tipo_ejercicio: 'Fuerza',
+    grupos_musculares: ['Cuádriceps'],
+    repeticiones_sugeridas: '3 series de 12 repeticiones',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Bajo',
+    duracion_estimada_minutos: 5
+  },
+  {
+    id: 'v4',
+    numero_orden: 4,
+    titulo: 'Abducción de Cadera de Pie',
+    descripcion: 'De pie, sujetándose de una silla, elevar la pierna lateralmente. Fortalece glúteo medio para estabilidad.',
+    youtube_video_id: 'fqX47z2HwDo',
+    tipo_ejercicio: 'Equilibrio/Fuerza',
+    grupos_musculares: ['Glúteo Medio'],
+    repeticiones_sugeridas: '2 series de 10 por pierna',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Medio',
+    duracion_estimada_minutos: 5
+  },
+  {
+    id: 'v5',
+    numero_orden: 5,
+    titulo: 'Marcha Estática (High Knees)',
+    descripcion: 'Simular caminar levantando exageradamente las rodillas en el lugar. Mejora capacidad aeróbica y flexores de cadera.',
+    youtube_video_id: 'FhK8_v7qXgU', 
+    tipo_ejercicio: 'Aeróbico',
+    grupos_musculares: ['Cardio', 'Flexores Cadera'],
+    repeticiones_sugeridas: '2 minutos continuos',
+    equipamiento_necesario: [],
+    nivel_dificultad: 'Medio',
+    duracion_estimada_minutos: 3
+  }
+];
+
 // Helper to initialize DB
 const initDB = () => {
   if (!localStorage.getItem(USERS_KEY)) {
     localStorage.setItem(USERS_KEY, JSON.stringify(INITIAL_USERS));
+  }
+  if (!localStorage.getItem(VIDEOS_KEY)) {
+    localStorage.setItem(VIDEOS_KEY, JSON.stringify(INITIAL_VIDEOS));
   }
 };
 
@@ -105,5 +177,32 @@ export const storageService = {
   getSessionsByPatient: async (patientId: string): Promise<WalkSession[]> => {
     const all = await storageService.getSessions();
     return all.filter(s => s.patientId === patientId);
+  },
+
+  // --- VIDEO MANAGEMENT ---
+  
+  getVideos: async (): Promise<ExerciseVideo[]> => {
+    initDB();
+    const data = localStorage.getItem(VIDEOS_KEY);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveVideo: async (video: ExerciseVideo): Promise<void> => {
+    initDB();
+    const videos = await storageService.getVideos();
+    const index = videos.findIndex(v => v.id === video.id);
+    if (index >= 0) {
+        videos[index] = video;
+    } else {
+        videos.push(video);
+    }
+    localStorage.setItem(VIDEOS_KEY, JSON.stringify(videos));
+  },
+
+  deleteVideo: async (id: string): Promise<void> => {
+    initDB();
+    let videos = await storageService.getVideos();
+    videos = videos.filter(v => v.id !== id);
+    localStorage.setItem(VIDEOS_KEY, JSON.stringify(videos));
   }
 };

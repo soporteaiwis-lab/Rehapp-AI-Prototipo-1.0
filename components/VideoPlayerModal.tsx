@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ExerciseVideo, ExerciseSessionLog } from '../types';
+import { api } from '../services/api';
 
 interface Props {
   video: ExerciseVideo;
   onClose: () => void;
   onComplete: (logData: Partial<ExerciseSessionLog>) => void;
+  // New props for prescription context
+  assignedSeries?: number;
+  assignedReps?: number;
+  doctorNotes?: string;
 }
 
-export const VideoPlayerModal: React.FC<Props> = ({ video, onClose, onComplete }) => {
-  const [sets, setSets] = useState(2);
-  const [reps, setReps] = useState(10);
+export const VideoPlayerModal: React.FC<Props> = ({ 
+  video, 
+  onClose, 
+  onComplete,
+  assignedSeries = 2,
+  assignedReps = 10,
+  doctorNotes = ''
+}) => {
+  // Initialize with prescribed values, but allow patient to edit "Actual" execution
+  const [sets, setSets] = useState(assignedSeries);
+  const [reps, setReps] = useState(assignedReps);
+  
   const [difficulty, setDifficulty] = useState(5);
   const [hasPain, setHasPain] = useState<boolean | null>(null);
   const [painLevel, setPainLevel] = useState<number>(0);
+
+  // Audio state
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
   const handleSubmit = () => {
     onComplete({
@@ -22,6 +39,25 @@ export const VideoPlayerModal: React.FC<Props> = ({ video, onClose, onComplete }
       dolor_durante_ejercicio: hasPain ? painLevel : null,
       completado: true
     });
+  };
+
+  const handlePlayNotes = async () => {
+    if (!doctorNotes) return;
+    
+    setIsPlayingAudio(true);
+    const base64Audio = await api.generateTextToSpeech(doctorNotes);
+    
+    if (base64Audio) {
+        const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
+        audio.onended = () => setIsPlayingAudio(false);
+        audio.play().catch(e => {
+            console.error("Audio playback error", e);
+            setIsPlayingAudio(false);
+        });
+    } else {
+        alert("No se pudo generar el audio.");
+        setIsPlayingAudio(false);
+    }
   };
 
   const getEmbedUrl = (videoId: string) => `https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0`;
@@ -58,16 +94,37 @@ export const VideoPlayerModal: React.FC<Props> = ({ video, onClose, onComplete }
           {/* CONTENT */}
           <div className="p-4 space-y-6 pb-24">
             
-            {/* INFO */}
+            {/* DOCTOR INSTRUCTIONS (Highlighted) */}
+            {doctorNotes && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <h4 className="text-yellow-800 font-extrabold text-sm uppercase flex items-center gap-1">
+                            <span>👨‍⚕️</span> Indicaciones del Médico
+                        </h4>
+                        <button 
+                            onClick={handlePlayNotes}
+                            disabled={isPlayingAudio}
+                            className={`text-xs px-2 py-1 rounded border flex items-center gap-1 font-bold transition-colors ${isPlayingAudio ? 'bg-yellow-200 text-yellow-800' : 'bg-white text-yellow-700 hover:bg-yellow-100'}`}
+                        >
+                            {isPlayingAudio ? '🔊 Escuchando...' : '🔊 Escuchar'}
+                        </button>
+                    </div>
+                    <p className="text-gray-800 text-lg leading-snug font-medium italic">
+                        "{doctorNotes}"
+                    </p>
+                </div>
+            )}
+
+            {/* INFO DEFAULT */}
             <div className="bg-blue-50 p-4 rounded-xl flex justify-between text-sm">
               <div className="text-center">
-                <span className="block text-gray-500 font-bold uppercase text-xs">Series</span>
-                <span className="text-xl font-bold text-blue-800">{video.repeticiones_sugeridas.split('•')[0] || '2-3'}</span>
+                <span className="block text-gray-500 font-bold uppercase text-xs">Asignado</span>
+                <span className="text-xl font-bold text-blue-800">{assignedSeries} Series</span>
               </div>
               <div className="w-px bg-blue-200"></div>
               <div className="text-center">
-                <span className="block text-gray-500 font-bold uppercase text-xs">Reps</span>
-                <span className="text-xl font-bold text-blue-800">{video.repeticiones_sugeridas.split('•')[1] || '10-15'}</span>
+                <span className="block text-gray-500 font-bold uppercase text-xs">Asignado</span>
+                <span className="text-xl font-bold text-blue-800">{assignedReps} Reps</span>
               </div>
               <div className="w-px bg-blue-200"></div>
               <div className="text-center">
@@ -78,11 +135,12 @@ export const VideoPlayerModal: React.FC<Props> = ({ video, onClose, onComplete }
 
             {/* REGISTRO FORM */}
             <div className="space-y-6">
-              <h3 className="text-xl font-extrabold text-gray-800 border-b pb-2">Registro de Actividad</h3>
+              <h3 className="text-xl font-extrabold text-gray-800 border-b pb-2">Registro de Ejecución Real</h3>
+              <p className="text-sm text-gray-500 -mt-4">Confirma lo que realmente hiciste:</p>
 
               {/* Series Counter */}
               <div>
-                <label className="block text-gray-600 font-bold mb-2">Series realizadas:</label>
+                <label className="block text-gray-600 font-bold mb-2">Series completadas:</label>
                 <div className="selector-numero">
                   <button className="btn-menos" onClick={() => setSets(Math.max(1, sets - 1))}>-</button>
                   <input readOnly value={sets} />

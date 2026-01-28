@@ -88,8 +88,8 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const handleQuickComplete = (assign: ExerciseAssignment) => {
     if (window.confirm(`¿Marcar "${assign.video.titulo}" como realizado hoy?`)) {
         handleLogSession({
-            series_completadas: 2, // Default assumption
-            repeticiones_completadas: 10,
+            series_completadas: assign.assigned_series || 2, 
+            repeticiones_completadas: assign.assigned_reps || 10,
             dificultad_percibida: 5,
             completado: true
         }, assign.video_id);
@@ -118,7 +118,6 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
         <h2 className="text-lg font-bold text-gray-700 mb-4">Tu Rutina Diaria</h2>
 
         {/* RESPONSIVE GRID: 1 column mobile, 2 tablet, 3 desktop */}
-        {/* SOLUCIÓN: Grid vertical en vez de scroll horizontal */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             
             {assignments.map(assign => (
@@ -155,7 +154,8 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                         </h3>
                         
                         <div className="flex items-center gap-2 mb-4 text-xs font-semibold text-gray-500 bg-gray-50 p-2 rounded-lg">
-                            <span>🔄 {assign.video.repeticiones_sugeridas.split('•')[0] || '2 series'}</span>
+                            {/* HERE WE DISPLAY THE ASSIGNED VALUES NOT THE VIDEO DEFAULTS */}
+                            <span>🔄 {assign.assigned_series || 2} x {assign.assigned_reps || 10}</span>
                             <span className="text-gray-300">|</span>
                             <span>⚡ {assign.video.nivel_dificultad}</span>
                         </div>
@@ -209,6 +209,14 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                 <div className="p-6 overflow-y-auto">
                     <h2 className="text-2xl font-extrabold text-blue-900 mb-4">{textGuideAssignment.video.titulo}</h2>
                     
+                    {/* SHOW DOCTOR NOTES IN GUIDE TOO */}
+                    {textGuideAssignment.doctor_notes && (
+                         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm mb-4">
+                            <h4 className="text-yellow-800 font-extrabold text-xs uppercase mb-1">Indicaciones:</h4>
+                            <p className="text-gray-800 italic">"{textGuideAssignment.doctor_notes}"</p>
+                         </div>
+                    )}
+
                     <div className="mb-6">
                         <h4 className="font-bold text-gray-500 uppercase text-xs mb-1">Descripción</h4>
                         <p className="text-lg text-gray-800 leading-relaxed">{textGuideAssignment.video.descripcion}</p>
@@ -217,7 +225,9 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                     <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="bg-blue-50 p-3 rounded-xl text-center">
                             <span className="block text-xs font-bold text-blue-400 uppercase">Series</span>
-                            <span className="text-xl font-bold text-blue-800">{textGuideAssignment.video.repeticiones_sugeridas}</span>
+                            <span className="text-xl font-bold text-blue-800">
+                                {textGuideAssignment.assigned_series || 2} x {textGuideAssignment.assigned_reps || 10}
+                            </span>
                         </div>
                         <div className="bg-blue-50 p-3 rounded-xl text-center">
                             <span className="block text-xs font-bold text-blue-400 uppercase">Equipo</span>
@@ -244,6 +254,10 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
             video={selectedVideoAssignment.video}
             onClose={() => setSelectedVideoAssignment(null)}
             onComplete={handleLogSession}
+            // Pass Prescription Props
+            assignedSeries={selectedVideoAssignment.assigned_series}
+            assignedReps={selectedVideoAssignment.assigned_reps}
+            doctorNotes={selectedVideoAssignment.doctor_notes}
         />
       )}
     </div>

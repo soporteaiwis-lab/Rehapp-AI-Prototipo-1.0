@@ -6,6 +6,75 @@ import { storageService } from './storageService';
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-3-flash-preview';
 
+// Hardcoded Videos for fallback/UI usage
+export const MOCK_VIDEOS: ExerciseVideo[] = [
+  {
+    id: 'v1',
+    numero_orden: 1,
+    titulo: 'Flexión Plantar (Puntillas)',
+    descripcion: 'Levantamiento de talones sosteniéndose de una silla o pared. Fundamental para activar la bomba muscular de la pantorrilla.',
+    youtube_video_id: 'JByo4Yh-1kI', 
+    tipo_ejercicio: 'Fuerza',
+    grupos_musculares: ['Pantorrillas', 'Gastrocnemio'],
+    repeticiones_sugeridas: '3 series de 10 repeticiones',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Bajo',
+    duracion_estimada_minutos: 5
+  },
+  {
+    id: 'v2',
+    numero_orden: 2,
+    titulo: 'Sentadilla en Silla (Sit to Stand)',
+    descripcion: 'Sentarse y pararse de una silla con control, manteniendo la espalda recta. Mejora fuerza de cuádriceps y glúteos.',
+    youtube_video_id: '52M4eQfQ2k0',
+    tipo_ejercicio: 'Fuerza',
+    grupos_musculares: ['Cuádriceps', 'Glúteos'],
+    repeticiones_sugeridas: '3 series de 8 repeticiones',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Medio',
+    duracion_estimada_minutos: 6
+  },
+  {
+    id: 'v3',
+    numero_orden: 3,
+    titulo: 'Extensión de Rodilla Sentado',
+    descripcion: 'Sentado en silla, extender la rodilla completamente y bajar lento. Fortalece cuádriceps sin impacto.',
+    youtube_video_id: 'yZg7s8zTzMg', 
+    tipo_ejercicio: 'Fuerza',
+    grupos_musculares: ['Cuádriceps'],
+    repeticiones_sugeridas: '3 series de 12 repeticiones',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Bajo',
+    duracion_estimada_minutos: 5
+  },
+  {
+    id: 'v4',
+    numero_orden: 4,
+    titulo: 'Abducción de Cadera de Pie',
+    descripcion: 'De pie, sujetándose de una silla, elevar la pierna lateralmente. Fortalece glúteo medio para estabilidad.',
+    youtube_video_id: 'fqX47z2HwDo',
+    tipo_ejercicio: 'Equilibrio/Fuerza',
+    grupos_musculares: ['Glúteo Medio'],
+    repeticiones_sugeridas: '2 series de 10 por pierna',
+    equipamiento_necesario: ['silla'],
+    nivel_dificultad: 'Medio',
+    duracion_estimada_minutos: 5
+  },
+  {
+    id: 'v5',
+    numero_orden: 5,
+    titulo: 'Marcha Estática (High Knees)',
+    descripcion: 'Simular caminar levantando exageradamente las rodillas en el lugar. Mejora capacidad aeróbica y flexores de cadera.',
+    youtube_video_id: 'FhK8_v7qXgU', 
+    tipo_ejercicio: 'Aeróbico',
+    grupos_musculares: ['Cardio', 'Flexores Cadera'],
+    repeticiones_sugeridas: '2 minutos continuos',
+    equipamiento_necesario: [],
+    nivel_dificultad: 'Medio',
+    duracion_estimada_minutos: 3
+  }
+];
+
 // Helper for consistent Local Date (YYYY-MM-DD) handling across the app
 export const getLocalDateString = (): string => {
     const d = new Date();
@@ -13,114 +82,6 @@ export const getLocalDateString = (): string => {
     const offset = d.getTimezoneOffset() * 60000; 
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
-
-// VIDEOS REALES SOLICITADOS (ORDEN Y TITULOS CORREGIDOS)
-export const MOCK_VIDEOS: ExerciseVideo[] = [
-  { 
-    id: 'v1', 
-    numero_orden: 1, 
-    titulo: 'Variante Pararse y Sentarse', 
-    descripcion: 'Ejercicio fundamental para fortalecer piernas y glúteos de forma segura.', 
-    youtube_video_id: 'O7oFiCMN25E', 
-    tipo_ejercicio: 'fuerza_eeii', 
-    grupos_musculares: ['cuadriceps', 'gluteos'], 
-    repeticiones_sugeridas: '2-3 series • 8-15 reps', 
-    equipamiento_necesario: ['silla'], 
-    nivel_dificultad: 'principiante', 
-    duracion_estimada_minutos: 5 
-  },
-  { 
-    id: 'v2', 
-    numero_orden: 2, 
-    titulo: 'Remo con Banda Elástica', 
-    descripcion: 'Fortalecimiento de espalda para mejorar postura.', 
-    youtube_video_id: 'J3VFboUbubo', 
-    tipo_ejercicio: 'resistencia', 
-    grupos_musculares: ['dorsal', 'trapecio'], 
-    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
-    equipamiento_necesario: ['banda_elastica'], 
-    nivel_dificultad: 'intermedio', 
-    duracion_estimada_minutos: 6 
-  },
-  { 
-    id: 'v3', 
-    numero_orden: 3, 
-    titulo: 'Pararse y Sentarse', 
-    descripcion: 'Ejercicio funcional clásico sin apoyo de brazos si es posible.', 
-    youtube_video_id: 'gWdgSzPrncU', 
-    tipo_ejercicio: 'fuerza_eeii', 
-    grupos_musculares: ['cuadriceps'], 
-    repeticiones_sugeridas: '2-3 series • 8-12 reps', 
-    equipamiento_necesario: ['silla'], 
-    nivel_dificultad: 'principiante', 
-    duracion_estimada_minutos: 5 
-  },
-  { 
-    id: 'v4', 
-    numero_orden: 4, 
-    titulo: 'Extensión de Glúteo (V1)', 
-    descripcion: 'Fortalecimiento de la cadera posterior.', 
-    youtube_video_id: 'G00dG-33QqA', 
-    tipo_ejercicio: 'fuerza_eeii', 
-    grupos_musculares: ['gluteos'], 
-    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
-    equipamiento_necesario: ['banda_elastica', 'silla'], 
-    nivel_dificultad: 'intermedio', 
-    duracion_estimada_minutos: 4 
-  },
-  { 
-    id: 'v5', 
-    numero_orden: 5, 
-    titulo: 'Extensión de Glúteo (V2)', 
-    descripcion: 'Variante enfocada en control muscular.', 
-    youtube_video_id: 'pX7DEPwYXEE', 
-    tipo_ejercicio: 'fuerza_eeii', 
-    grupos_musculares: ['gluteos', 'cuadriceps'], 
-    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
-    equipamiento_necesario: ['banda_elastica', 'silla'], 
-    nivel_dificultad: 'principiante', 
-    duracion_estimada_minutos: 4 
-  },
-  { 
-    id: 'v6', 
-    numero_orden: 6, 
-    titulo: 'Extensión de Cuádriceps', 
-    descripcion: 'Fortalecimiento de muslos con peso adicional.', 
-    youtube_video_id: 'zEa1Eq3yIsw', 
-    tipo_ejercicio: 'fuerza_eeii', 
-    grupos_musculares: ['cuadriceps'], 
-    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
-    equipamiento_necesario: ['tobilleras', 'silla'], 
-    nivel_dificultad: 'intermedio', 
-    duracion_estimada_minutos: 5 
-  },
-  { 
-    id: 'v7', 
-    numero_orden: 7, 
-    titulo: 'Elevación de Talones', 
-    descripcion: 'Clave para el retorno venoso y fuerza de pantorrillas.', 
-    youtube_video_id: '0caP82ZUo1I', 
-    tipo_ejercicio: 'fuerza_eeii', 
-    grupos_musculares: ['pantorrillas'], 
-    repeticiones_sugeridas: '2-3 series • 15-20 reps', 
-    equipamiento_necesario: ['silla'], 
-    nivel_dificultad: 'principiante', 
-    duracion_estimada_minutos: 3 
-  },
-  { 
-    id: 'v8', 
-    numero_orden: 8, 
-    titulo: 'Curl Bíceps (flexión de codo)', 
-    descripcion: 'Fortalecimiento de brazos para actividades diarias.', 
-    youtube_video_id: '-FNnffnCPxE', 
-    tipo_ejercicio: 'resistencia', 
-    grupos_musculares: ['biceps'], 
-    repeticiones_sugeridas: '2-3 series • 10-15 reps', 
-    equipamiento_necesario: ['banda_elastica', 'mancuernas'], 
-    nivel_dificultad: 'principiante', 
-    duracion_estimada_minutos: 4 
-  },
-];
 
 const LOGS_KEY = 'rehapp_exercise_logs';
 const ASSIGNMENTS_KEY = 'rehapp_assignments';
@@ -173,6 +134,32 @@ export const api = {
     }
   },
 
+  // --- NEW: GEMINI TEXT TO SPEECH ---
+  generateTextToSpeech: async (text: string): Promise<string | null> => {
+    try {
+        // Using the specific model for TTS as per instructions
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.5-flash-preview-tts",
+            contents: { parts: [{ text: text }] },
+            config: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: 'Kore' },
+                    },
+                },
+            },
+        });
+
+        // The API returns raw audio bytes in base64 within inlineData
+        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        return base64Audio || null;
+    } catch (error) {
+        console.error("TTS Error:", error);
+        return null;
+    }
+  },
+
   getDoctorDashboard: async (doctorId: string): Promise<PatientSummary[]> => {
     const patients = await storageService.getPatients();
     const allWalkSessions = await storageService.getSessions();
@@ -185,10 +172,7 @@ export const api = {
     return patients.map(p => {
         const pWalkSessions = allWalkSessions.filter(s => s.patientId === p.id);
         const pExerciseLogs = allExerciseLogs.filter(l => String(l.patient_id) === String(p.id));
-        const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
         
-        // Criterio PDF: "Mínimo 3 sesiones semanales" (Caminata + Ejercicio)
-        // Simplificamos: Asumimos sesiones de caminata como la base
         const weeklyCompliance = pWalkSessions.length; 
         
         const maxWalkPain = Math.max(0, ...pWalkSessions.map(s => s.painLevel));
@@ -216,25 +200,50 @@ export const api = {
     });
   },
 
+  // --- VIDEO MANAGEMENT (Dynamic) ---
+
+  getAllVideos: async (): Promise<ExerciseVideo[]> => {
+    return await storageService.getVideos();
+  },
+
+  saveVideoToLibrary: async (video: ExerciseVideo): Promise<void> => {
+    await storageService.saveVideo(video);
+  },
+
+  deleteVideoFromLibrary: async (videoId: string): Promise<void> => {
+    await storageService.deleteVideo(videoId);
+  },
+
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
-    let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
+    
+    // Default assignment if none exists: Videos from the DB
+    const allVideos = await storageService.getVideos();
+    let assignmentsIds = allVideos.map(v => v.id);
+    let config = { series: 2, reps: 10, notes: "" }; // Default config
+
     if (assignmentsJson) {
         const allAssignments = JSON.parse(assignmentsJson);
         const patientData = allAssignments[patientId];
         if (patientData) {
             assignmentsIds = Array.isArray(patientData) ? patientData : patientData.videoIds;
+            // Inject Doctor Config
+            if (patientData.config) {
+                config = patientData.config;
+            }
         }
     }
 
     const today = getLocalDateString();
     
-    const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
+    // Filter videos that are assigned (dynamically fetched)
+    const assignedVideos = allVideos.filter(v => assignmentsIds.includes(v.id));
 
-    return assignedVideos.map(video => {
+    // MAP AND SORT BY NUMERO_ORDEN TO ENSURE CORRECT DISPLAY
+    const mapped = assignedVideos.map(video => {
         const todaysLog = logs.find(l => 
             String(l.patient_id) === String(patientId) && 
             String(l.video_id) === String(video.id) && 
@@ -248,9 +257,16 @@ export const api = {
             video_id: video.id,
             video: video,
             completed_today: !!todaysLog,
-            last_completed_at: todaysLog?.timestamp
+            last_completed_at: todaysLog?.timestamp,
+            // Inject Prescription
+            assigned_series: Number(config.series) || 2,
+            assigned_reps: Number(config.reps) || 10,
+            doctor_notes: config.notes || ""
         };
     });
+
+    // STRICT SORTING: Always rely on 'numero_orden'
+    return mapped.sort((a, b) => a.video.numero_orden - b.video.numero_orden);
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {

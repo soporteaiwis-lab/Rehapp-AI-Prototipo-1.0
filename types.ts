@@ -107,7 +107,7 @@ export interface ExerciseVideo {
   youtube_video_id: string;
   tipo_ejercicio: string;
   grupos_musculares: string[];
-  repeticiones_sugeridas: string;
+  repeticiones_sugeridas: string; // Texto genérico del video
   equipamiento_necesario: string[];
   nivel_dificultad: string;
   duracion_estimada_minutos: number; // Nuevo para calcular volumen total
@@ -120,6 +120,10 @@ export interface ExerciseAssignment {
   video: ExerciseVideo; // Joined
   completed_today: boolean; // Computed for UI
   last_completed_at?: string; // For UI info
+  // Prescription overrides
+  assigned_series?: number;
+  assigned_reps?: number;
+  doctor_notes?: string;
 }
 
 export interface ExerciseSessionLog {
