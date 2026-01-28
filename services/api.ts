@@ -6,7 +6,7 @@ import { storageService } from './storageService';
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-3-flash-preview';
 
-// MOCK DATA FOR VIDEOS - LISTA COMPLETA DE 8 VIDEOS SOLICITADOS
+// MOCK DATA FOR VIDEOS
 export const MOCK_VIDEOS: ExerciseVideo[] = [
   { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: 'Ejercicio básico de fuerza', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
   { id: 'v2', numero_orden: 2, titulo: 'Remo con Banda Elástica', descripcion: 'Ejercicio de espalda y postura', youtube_video_id: 'J3VFboUbubo', tipo_ejercicio: 'resistencia', grupos_musculares: ['dorsal', 'trapecio'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica'], nivel_dificultad: 'intermedio' },
@@ -18,54 +18,32 @@ export const MOCK_VIDEOS: ExerciseVideo[] = [
   { id: 'v8', numero_orden: 8, titulo: 'Curl de Bíceps', descripcion: 'Fuerza de brazos', youtube_video_id: '-FNnffnCPxE', tipo_ejercicio: 'resistencia', grupos_musculares: ['biceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'mancuernas'], nivel_dificultad: 'principiante' },
 ];
 
-// Local storage key for logs
 const LOGS_KEY = 'rehapp_exercise_logs';
 const ASSIGNMENTS_KEY = 'rehapp_assignments';
 
-/**
- * API SERVICE LAYER
- */
 export const api = {
-
   startActivity: async (patientId: string, tipoActividad: string) => {
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 200));
     return {
       session_id: Date.now().toString(),
       meta_pasos: 4500,
-      mensaje_inicio: "¡Excelente! Comienza a caminar a ritmo cómodo."
+      mensaje_inicio: "¡Excelente! Comienza a caminar."
     };
   },
 
   reportPain: async (sessionId: string, nivelEva: number): Promise<PainResponse> => {
     if (nivelEva >= 8) {
-        return {
-            accion: "ALTO_INMEDIATO",
-            mensaje: "🛑 DESCANSA AHORA. El dolor es demasiado alto.",
-            bloquear_app: true
-        };
+        return { accion: "ALTO_INMEDIATO", mensaje: "🛑 DESCANSA AHORA. El dolor es demasiado alto.", bloquear_app: true };
     } 
     if (nivelEva >= 5) {
-        return {
-            accion: "PRECAUCION",
-            mensaje: "⚠️ Reduce la velocidad ahora. Respira profundo.",
-            bloquear_app: false
-        };
+        return { accion: "PRECAUCION", mensaje: "⚠️ Reduce la velocidad ahora.", bloquear_app: false };
     }
-    return {
-        accion: "CONTINUAR",
-        mensaje: "👍 Vas muy bien. Mantén el ritmo suave.",
-        bloquear_app: false
-    };
+    return { accion: "CONTINUAR", mensaje: "👍 Vas muy bien.", bloquear_app: false };
   },
 
   generateNutritionPlan: async (ingredientes: string[], restricciones: string): Promise<Recipe | null> => {
     try {
-      const prompt = `
-        Eres un nutricionista experto en salud cardiovascular.
-        Ingredientes: ${ingredientes.join(', ')}. Restricciones: ${restricciones}.
-        Genera una receta JSON: { "nombre": "...", "beneficios": "...", "ingredientes": ["..."], "preparacion": ["..."] }
-      `;
-
+      const prompt = `Nutricionista para paciente vascular. Ingredientes: ${ingredientes.join(', ')}. Restricciones: ${restricciones}. Genera JSON: { "nombre": "", "beneficios": "", "ingredientes": [], "preparacion": [] }`;
       const result = await genAI.models.generateContent({
         model: model,
         contents: prompt,
@@ -82,33 +60,45 @@ export const api = {
           }
         }
       });
-
       const text = result.text;
-      if (!text) return null;
-      return JSON.parse(text) as Recipe;
+      return text ? JSON.parse(text) : null;
     } catch (error) {
       console.error("AI Error:", error);
       return null;
     }
   },
 
+  // UPDATED: Now fetches everything from Storage Service/LocalStorage
   getDoctorDashboard: async (doctorId: string): Promise<PatientSummary[]> => {
     const patients = await storageService.getPatients();
-    const allSessions = await storageService.getSessions();
+    const allWalkSessions = await storageService.getSessions();
+    
+    // Get Exercise Logs manually from LS since they aren't in storageService yet (mock)
+    const logsJson = localStorage.getItem(LOGS_KEY);
+    const allExerciseLogs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     return patients.map(p => {
-        const pSessions = allSessions.filter(s => s.patientId === p.id);
-        const weeklyCompliance = pSessions.length; 
+        // Stats Logic:
+        // 1. Walking Sessions
+        const pWalkSessions = allWalkSessions.filter(s => s.patientId === p.id);
         
-        const sortedSessions = [...pSessions].sort((a,b) => Number(b.id) - Number(a.id));
-        const lastSession = sortedSessions[0];
-        const lastEva = lastSession ? lastSession.painLevel : 0;
+        // 2. Exercise Sessions (Unique Days)
+        const pExerciseLogs = allExerciseLogs.filter(l => l.patient_id === p.id);
+        const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
+
+        // Total compliance (Walk sessions + Exercise Days) - Simplified logic for prototype
+        const weeklyCompliance = pWalkSessions.length + uniqueExerciseDays;
         
-        const recentHighPain = sortedSessions.slice(0, 2).filter(s => s.painLevel >= 8).length >= 1;
+        // 3. Pain Logic (Max pain from walk OR exercises)
+        const maxWalkPain = Math.max(0, ...pWalkSessions.map(s => s.painLevel));
+        const maxExercisePain = Math.max(0, ...pExerciseLogs.map(l => l.dolor_durante_ejercicio || 0));
+        const lastEva = Math.max(maxWalkPain, maxExercisePain);
+        
+        const recentHighPain = lastEva >= 8;
         const lowCompliance = weeklyCompliance < 3;
 
         const alerts: string[] = [];
-        if (lowCompliance) alerts.push("Baja adherencia (< 3 sesiones)");
+        if (lowCompliance) alerts.push("Baja adherencia (< 3 ses/sem)");
         if (recentHighPain) alerts.push(`Dolor crítico reciente (EVA ${lastEva})`);
 
         return {
@@ -125,14 +115,13 @@ export const api = {
   },
 
   getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
     
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     
-    // Por defecto, asignamos TODOS los videos (v1 a v8) si no hay asignación específica
-    // Esto asegura que el paciente de pruebas vea todo.
+    // Default: Assign ALL videos
     let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
     
     if (assignmentsJson) {
@@ -165,31 +154,31 @@ export const api = {
   },
 
   logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
-    await new Promise(r => setTimeout(r, 400));
-
+    // 1. Read existing
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
-    // Check if already done today to prevent double logging (optional rule)
+    // 2. Check overlap
     const existingIndex = logs.findIndex(l => 
         l.patient_id === log.patient_id && 
         l.video_id === log.video_id && 
         l.fecha_realizacion === log.fecha_realizacion
     );
 
+    // 3. Update or Push
     if (existingIndex >= 0) {
-        // Update existing log instead of rejecting, allows correction
         logs[existingIndex] = log;
     } else {
         logs.push(log);
     }
     
+    // 4. Save to LocalStorage (Persistent)
     localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+    
     return { success: true };
   },
 
   saveExerciseRoutine: async (patientId: string, videoIds: string[], config: any) => {
-    await new Promise(r => setTimeout(r, 600));
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     const allAssignments = assignmentsJson ? JSON.parse(assignmentsJson) : {};
     
@@ -213,7 +202,6 @@ export const api = {
   },
 
   getPatientExerciseLogs: async (patientId: string): Promise<ExerciseSessionLog[]> => {
-    await new Promise(r => setTimeout(r, 300));
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     return logs.filter(l => l.patient_id === patientId);
