@@ -30,6 +30,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       patient_id: user.id,
       video_id: selectedVideoAssignment.video_id,
       fecha_realizacion: new Date().toISOString().split('T')[0],
+      timestamp: new Date().toISOString(), // Add exact time
       series_completadas: logData.series_completadas || 0,
       repeticiones_completadas: logData.repeticiones_completadas || 0,
       dificultad_percibida: logData.dificultad_percibida || 0,
@@ -42,18 +43,16 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     if (result.success) {
       alert("¡Ejercicio registrado correctamente! 🎉");
       setSelectedVideoAssignment(null);
-      loadExercises(); // Refresh UI
+      await loadExercises(); // Refresh UI immediately to show checkmark
     } else {
       alert(result.message || "Error al registrar.");
     }
   };
 
-  // Calculate Progress
+  // Calculate Real Progress
+  const totalAssigned = assignments.length;
   const completedTodayCount = assignments.filter(a => a.completed_today).length;
-  // Mock weekly logic: Assuming 3 sessions goal refers to unique days, 
-  // but for this view we show "Exercises done today / Total Assigned" or simulate a weekly counter
-  // Let's stick to the prompt's "Esta semana: 2/3 sesiones"
-  const weeklySessionsMock = completedTodayCount > 0 ? 2 : 1; 
+  const progressPercentage = totalAssigned > 0 ? (completedTodayCount / totalAssigned) * 100 : 0;
 
   const getEquipmentIcon = (eq: string[]) => {
     if (eq.includes('silla')) return '🪑 Silla';
@@ -67,28 +66,34 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   return (
     <div className="pantalla-ejercicios pb-24">
       {/* Header */}
-      <header className="flex justify-between items-end mb-6 px-2">
+      <header className="flex justify-between items-end mb-6 px-2 pt-4">
         <h1 className="text-3xl font-extrabold text-gray-800">📹 Mis Ejercicios</h1>
         <div className="bg-blue-100 px-4 py-2 rounded-xl text-center">
-          <span className="block text-xs text-blue-600 font-bold uppercase">Esta semana</span>
-          <span className="text-2xl font-black text-blue-800">{weeklySessionsMock}/3</span>
+          <span className="block text-xs text-blue-600 font-bold uppercase">Progreso Hoy</span>
+          <span className="text-2xl font-black text-blue-800">{completedTodayCount}/{totalAssigned}</span>
         </div>
       </header>
 
-      {/* Motivation Card */}
-      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-xl mb-6 flex gap-4 items-center shadow-sm mx-2">
-        <div className="text-4xl">⭐</div>
-        <p className="text-gray-700 font-medium leading-tight">
-          {weeklySessionsMock >= 3 
-            ? "¡Meta cumplida esta semana! Eres increíble." 
-            : `¡Excelente! Solo falta ${3 - weeklySessionsMock} sesión${3 - weeklySessionsMock > 1 ? 'es' : ''} esta semana.`}
-        </p>
+      {/* Progress Bar & Motivation */}
+      <div className="bg-white p-4 rounded-xl shadow-sm mx-2 mb-6 border border-gray-100">
+         <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+            <div 
+                className="bg-green-500 h-4 rounded-full transition-all duration-500" 
+                style={{ width: `${progressPercentage}%` }}
+            ></div>
+         </div>
+         <p className="text-gray-600 font-medium text-sm text-center">
+            {completedTodayCount === totalAssigned 
+                ? "¡Excelente! Has completado todo por hoy. 🌟" 
+                : `Has completado ${completedTodayCount} de ${totalAssigned} ejercicios.`
+            }
+         </p>
       </div>
 
       {/* List */}
       <div className="space-y-6 px-2">
         {assignments.map(assign => (
-          <div key={assign.id} className="video-card">
+          <div key={assign.id} className={`video-card ${assign.completed_today ? 'opacity-80 bg-gray-50' : 'bg-white'}`}>
             {/* Thumbnail */}
             <div 
               className="video-thumbnail cursor-pointer"
@@ -97,9 +102,15 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
               <img 
                 src={`https://img.youtube.com/vi/${assign.video.youtube_video_id}/hqdefault.jpg`} 
                 alt={assign.video.titulo} 
+                className={assign.completed_today ? "grayscale" : ""}
               />
               <div className="play-overlay">▶️</div>
               <div className="badge-numero">{assign.video.numero_orden}</div>
+              {assign.completed_today && (
+                  <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                      <span className="text-white text-6xl font-bold drop-shadow-lg">✓</span>
+                  </div>
+              )}
             </div>
             
             {/* Info */}
@@ -109,7 +120,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                     {assign.video.titulo}
                 </h3>
                 {assign.completed_today ? (
-                    <span className="badge-estado completado">✓ Hecho hoy</span>
+                    <span className="badge-estado completado">✓ Completado</span>
                 ) : (
                     <span className="badge-estado pendiente">Pendiente</span>
                 )}
@@ -119,9 +130,19 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                  <span>🔄 {assign.video.repeticiones_sugeridas.split('•')[0] || '2 series'}</span>
                  <span>{getEquipmentIcon(assign.video.equipamiento_necesario)}</span>
               </div>
+              
+              {assign.last_completed_at && (
+                  <div className="text-xs text-gray-400 mb-2">
+                      Realizado a las: {new Date(assign.last_completed_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </div>
+              )}
 
               <button 
-                className="w-full py-3 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
+                className={`w-full py-3 font-bold rounded-lg border transition-colors ${
+                    assign.completed_today 
+                    ? "bg-gray-100 text-gray-500 border-gray-300" 
+                    : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                }`}
                 onClick={() => setSelectedVideoAssignment(assign)}
               >
                 {assign.completed_today ? 'VER DE NUEVO' : 'VER EJERCICIO'}
@@ -132,19 +153,19 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       </div>
 
       {/* Giant CTA */}
-      <div className="mt-8 px-2">
-        <button 
-            className="btn-gigante verde"
-            onClick={() => {
-                // Find first pending or just scroll to top
-                const firstPending = assignments.find(a => !a.completed_today);
-                if (firstPending) setSelectedVideoAssignment(firstPending);
-                else alert("¡Ya completaste todo por hoy! Puedes repasar si quieres.");
-            }}
-        >
-            🏋️ HACER MIS EJERCICIOS AHORA
-        </button>
-      </div>
+      {completedTodayCount < totalAssigned && (
+        <div className="mt-8 px-2">
+            <button 
+                className="btn-gigante verde"
+                onClick={() => {
+                    const firstPending = assignments.find(a => !a.completed_today);
+                    if (firstPending) setSelectedVideoAssignment(firstPending);
+                }}
+            >
+                🏋️ HACER EL SIGUIENTE
+            </button>
+        </div>
+      )}
 
       {/* Modal */}
       {selectedVideoAssignment && (

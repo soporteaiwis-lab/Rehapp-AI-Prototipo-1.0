@@ -162,9 +162,12 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     setLoading(false);
   };
 
-  const handleSaveGeneral = (e: React.FormEvent) => {
+  const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`✅ Tratamiento actualizado para ${patient.nombre}`);
+    setLoading(true);
+    await api.updatePatientTreatment(patient.id, stepGoal);
+    alert(`✅ Tratamiento actualizado para ${patient.nombre}. Meta guardada.`);
+    setLoading(false);
     onClose();
   };
 
@@ -259,8 +262,12 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                     className="w-full p-3 border rounded-lg focus:border-blue-500"
                   />
                 </div>
-                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg">
-                  Guardar
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg"
+                >
+                  {loading ? 'Guardando...' : 'Guardar'}
                 </button>
               </form>
             </div>

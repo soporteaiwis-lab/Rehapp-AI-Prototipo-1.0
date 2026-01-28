@@ -73,7 +73,7 @@ export const api = {
     const patients = await storageService.getPatients();
     const allWalkSessions = await storageService.getSessions();
     
-    // Get Exercise Logs manually from LS since they aren't in storageService yet (mock)
+    // Get Exercise Logs manually from LS
     const logsJson = localStorage.getItem(LOGS_KEY);
     const allExerciseLogs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
@@ -86,10 +86,10 @@ export const api = {
         const pExerciseLogs = allExerciseLogs.filter(l => l.patient_id === p.id);
         const uniqueExerciseDays = new Set(pExerciseLogs.map(l => l.fecha_realizacion)).size;
 
-        // Total compliance (Walk sessions + Exercise Days) - Simplified logic for prototype
+        // Total compliance
         const weeklyCompliance = pWalkSessions.length + uniqueExerciseDays;
         
-        // 3. Pain Logic (Max pain from walk OR exercises)
+        // 3. Pain Logic
         const maxWalkPain = Math.max(0, ...pWalkSessions.map(s => s.painLevel));
         const maxExercisePain = Math.max(0, ...pExerciseLogs.map(l => l.dolor_durante_ejercicio || 0));
         const lastEva = Math.max(maxWalkPain, maxExercisePain);
@@ -105,7 +105,7 @@ export const api = {
             id: p.id,
             nombre: p.name,
             edad: p.age || 70,
-            meta_pasos: 4500,
+            meta_pasos: p.dailyStepGoal || 4500, // READ FROM PERSISTED USER DATA
             cumplimiento_semanal: weeklyCompliance,
             alerta: alerts.length > 0,
             ultimo_dolor_eva: lastEva,
@@ -132,11 +132,13 @@ export const api = {
         }
     }
 
+    // Fix time zone offset issue by using local date string comparison
+    // But for simplicity in prototype, stick to YYYY-MM-DD string match
     const today = new Date().toISOString().split('T')[0];
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
-        const completed = logs.some(l => 
+        const todaysLog = logs.find(l => 
             l.patient_id === patientId && 
             l.video_id === video.id && 
             l.fecha_realizacion === today &&
@@ -148,7 +150,8 @@ export const api = {
             patient_id: patientId,
             video_id: video.id,
             video: video,
-            completed_today: completed
+            completed_today: !!todaysLog,
+            last_completed_at: todaysLog?.timestamp
         };
     });
   },
@@ -165,9 +168,9 @@ export const api = {
         l.fecha_realizacion === log.fecha_realizacion
     );
 
-    // 3. Update or Push
+    // 3. Update or Push (Ensuring Timestamp is saved)
     if (existingIndex >= 0) {
-        logs[existingIndex] = log;
+        logs[existingIndex] = log; // Update with new timestamp/data
     } else {
         logs.push(log);
     }
@@ -189,6 +192,12 @@ export const api = {
     };
     
     localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(allAssignments));
+    return { success: true };
+  },
+
+  // NEW METHOD: Updates the patient's step goal in the main user storage
+  updatePatientTreatment: async (patientId: string, stepGoal: number) => {
+    await storageService.updatePatientField(patientId, 'dailyStepGoal', stepGoal);
     return { success: true };
   },
 

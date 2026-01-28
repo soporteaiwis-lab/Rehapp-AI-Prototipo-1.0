@@ -13,6 +13,8 @@ export interface User {
   age?: number;
   condition?: string; 
   clinicalProfile?: ClinicalProfile;
+  // Persisted settings
+  dailyStepGoal?: number; 
 }
 
 export interface ClinicalProfile {
@@ -99,12 +101,14 @@ export interface ExerciseAssignment {
   video_id: string;
   video: ExerciseVideo; // Joined
   completed_today: boolean; // Computed for UI
+  last_completed_at?: string; // For UI info
 }
 
 export interface ExerciseSessionLog {
   patient_id: string;
   video_id: string;
-  fecha_realizacion: string;
+  fecha_realizacion: string; // YYYY-MM-DD
+  timestamp: string; // ISO Full Date Time
   series_completadas: number;
   repeticiones_completadas: number;
   dificultad_percibida: number;

@@ -5,9 +5,9 @@ const SESSION_KEY = 'rehapp_sessions';
 
 // 1. Initial Seed Data (Only used if DB is empty)
 const INITIAL_USERS: User[] = [
-  { id: '12345678', name: 'Paciente Pruebas', role: Role.PATIENT, age: 75, condition: 'EAP Moderada' },
-  { id: '002', name: 'Juan Pérez (78 años)', role: Role.PATIENT, age: 78, condition: 'EAP Severa' },
-  { id: '003', name: 'Maria González (72 años)', role: Role.PATIENT, age: 72, condition: 'EAP Moderada' },
+  { id: '12345678', name: 'Paciente Pruebas', role: Role.PATIENT, age: 75, condition: 'EAP Moderada', dailyStepGoal: 4500 },
+  { id: '002', name: 'Juan Pérez (78 años)', role: Role.PATIENT, age: 78, condition: 'EAP Severa', dailyStepGoal: 3000 },
+  { id: '003', name: 'Maria González (72 años)', role: Role.PATIENT, age: 72, condition: 'EAP Moderada', dailyStepGoal: 5000 },
   { id: 'd1', name: 'Dr. Silva (Kinesiólogo)', role: Role.DOCTOR, email: 'medico@test.com' },
 ];
 
@@ -47,7 +47,8 @@ export const storageService = {
         throw new Error("El ID/RUT ya existe.");
     }
     
-    users.push({ ...patient, role: Role.PATIENT });
+    // Default goal for new patients
+    users.push({ ...patient, role: Role.PATIENT, dailyStepGoal: 3000 });
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
   },
 
@@ -58,6 +59,18 @@ export const storageService = {
     
     if (index !== -1) {
         users[index] = { ...users[index], ...updatedPatient };
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+  },
+
+  // Specific method to update a single field without needing the whole user object
+  updatePatientField: async (userId: string, field: keyof User, value: any): Promise<void> => {
+    initDB();
+    const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    const index = users.findIndex(u => u.id === userId);
+    
+    if (index !== -1) {
+        users[index] = { ...users[index], [field]: value };
         localStorage.setItem(USERS_KEY, JSON.stringify(users));
     }
   },
