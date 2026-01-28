@@ -188,10 +188,15 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
   };
   const last7Days = getComplianceData();
   
+  // LOGIC FIX: Sort Active Exercises by MOCK_VIDEOS order (1-8)
   const activeExercises = Array.from(new Set([
     ...selectedVideos,
     ...exerciseLogs.map(l => l.video_id)
-  ]));
+  ])).sort((idA, idB) => {
+      const videoA = MOCK_VIDEOS.find(v => v.id === idA);
+      const videoB = MOCK_VIDEOS.find(v => v.id === idB);
+      return (videoA?.numero_orden || 0) - (videoB?.numero_orden || 0);
+  });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -393,10 +398,15 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                                 </thead>
                                 <tbody>
                                     {activeExercises.map(vidId => {
-                                        const videoTitle = MOCK_VIDEOS.find(v => v.id === vidId)?.titulo || 'Unknown';
+                                        const video = MOCK_VIDEOS.find(v => v.id === vidId);
+                                        // Include Number in Title
+                                        const videoTitle = video ? `${video.numero_orden}. ${video.titulo}` : 'Desconocido';
+                                        
                                         return (
                                             <tr key={vidId} className="border-t">
-                                                <td className="py-2 truncate max-w-[80px]" title={videoTitle}>{videoTitle}</td>
+                                                <td className="py-2 truncate max-w-[150px]" title={videoTitle}>
+                                                    {videoTitle}
+                                                </td>
                                                 {last7Days.map(day => {
                                                     const done = exerciseLogs.some(l => 
                                                         l.video_id === vidId && 
