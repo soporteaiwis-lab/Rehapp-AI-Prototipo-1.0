@@ -44,7 +44,6 @@ export const DoctorDashboard: React.FC = () => {
   };
 
   const openEditModal = (p: PatientSummary) => {
-    // We assume ID matches so we just populate basic info. In a real app we'd fetch full User profile.
     setFormData({ id: p.id, name: p.nombre, age: p.edad, condition: 'EAP' }); 
     setIsEditing(true);
     setShowFormModal(true);
@@ -80,13 +79,13 @@ export const DoctorDashboard: React.FC = () => {
   }
 
   return (
-    <div className="dashboard-medico min-h-screen pb-20">
-      <header className="flex justify-between items-center mb-8 border-b pb-4">
-        <div>
-            <h1 className="text-3xl font-extrabold text-blue-900">Panel Médico - Rehapp UACH</h1>
-            <p className="text-gray-500">Gestión de Rehabilitación Domiciliaria</p>
+    <div className="dashboard-medico min-h-screen pb-20 bg-gray-50">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 bg-white p-4 sticky top-0 z-20 shadow-sm">
+        <div className="mb-2 sm:mb-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-blue-900">Panel Médico</h1>
+            <p className="text-gray-500 text-sm">Gestión de Rehabilitación Domiciliaria</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
           <div className="text-right hidden sm:block">
             <span className="block font-bold text-gray-800">Dra. Andrea Lara</span>
             <span className="text-xs text-gray-500">Fisiatra</span>
@@ -97,115 +96,174 @@ export const DoctorDashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Resumen de Alertas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="alerta-card critica">
-          <div className="numero text-red-600">{criticalCount}</div>
-          <div className="texto">Pacientes con dolor EVA ≥ 8</div>
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Resumen de Alertas */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-6 mb-8">
+            <div className="alerta-card critica p-2 sm:p-5">
+            <div className="numero text-red-600 text-2xl sm:text-4xl">{criticalCount}</div>
+            <div className="texto text-[10px] sm:text-sm">Dolor Crítico</div>
+            </div>
+            <div className="alerta-card warning p-2 sm:p-5">
+            <div className="numero text-orange-500 text-2xl sm:text-4xl">{warningCount}</div>
+            <div className="texto text-[10px] sm:text-sm">Baja Adherencia</div>
+            </div>
+            <div className="alerta-card ok p-2 sm:p-5">
+            <div className="numero text-green-600 text-2xl sm:text-4xl">{okCount}</div>
+            <div className="texto text-[10px] sm:text-sm">En Tratamiento</div>
+            </div>
         </div>
-        <div className="alerta-card warning">
-          <div className="numero text-orange-500">{warningCount}</div>
-          <div className="texto">No cumplieron 3 sesiones</div>
-        </div>
-        <div className="alerta-card ok">
-          <div className="numero text-green-600">{okCount}</div>
-          <div className="texto">Cumpliendo tratamiento</div>
-        </div>
-      </div>
 
-      {/* Tabla de Pacientes */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-            <h3 className="font-bold text-gray-700">Listado de Pacientes Asignados</h3>
-            <button 
-                onClick={openAddModal}
-                className="bg-blue-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors"
-            >
-                + Nuevo Paciente
-            </button>
-        </div>
-        <div className="overflow-x-auto">
-            <table className="tabla-pacientes">
-                <thead>
-                <tr>
-                    <th className="w-16 text-center">Est</th>
-                    <th>ID / RUT</th>
-                    <th>Paciente</th>
-                    <th>Edad</th>
-                    <th>Sesiones (Sem)</th>
-                    <th>Último Dolor</th>
-                    <th className="text-center">Acciones</th>
-                </tr>
-                </thead>
-                <tbody>
+        {/* CONTENEDOR DE PACIENTES */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border">
+            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 className="font-bold text-gray-700">Pacientes Asignados</h3>
+                <button 
+                    onClick={openAddModal}
+                    className="bg-blue-600 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors"
+                >
+                    + Nuevo
+                </button>
+            </div>
+
+            {/* VISTA MOVIL: TARJETAS (Visible solo en pantallas pequeñas) */}
+            <div className="block sm:hidden divide-y">
                 {patients.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center text-gray-500 py-8">No hay pacientes registrados.</td></tr>
+                    <div className="text-center p-8 text-gray-500">No hay pacientes.</div>
                 ) : patients.map(patient => {
                     const isCritical = patient.ultimo_dolor_eva >= 8;
                     const isWarning = patient.cumplimiento_semanal < 3;
-                    let rowClass = "";
-                    let badge = <span className="text-green-500 text-2xl">●</span>;
-
-                    if (isCritical) {
-                        rowClass = "alerta-critica";
-                        badge = <span className="text-red-600 text-2xl">🚨</span>;
-                    } else if (isWarning) {
-                        rowClass = "alerta-warning";
-                        badge = <span className="text-orange-400 text-2xl">⚠️</span>;
-                    }
+                    let borderClass = "border-l-4 border-green-500";
+                    if(isCritical) borderClass = "border-l-4 border-red-500 bg-red-50";
+                    else if(isWarning) borderClass = "border-l-4 border-orange-400";
 
                     return (
-                        <tr key={patient.id} className={rowClass}>
-                            <td className="text-center">{badge}</td>
-                            <td className="font-mono font-bold text-gray-600">{patient.id}</td>
-                            <td>
-                                <div className="font-bold text-gray-800">{patient.nombre}</div>
-                                {patient.alerta && <div className="text-xs text-red-500 font-semibold">{patient.alertas[0]}</div>}
-                            </td>
-                            <td>{patient.edad}</td>
-                            <td>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-24 bg-gray-200 rounded-full h-2 overflow-hidden">
-                                        <div 
-                                            className={`h-full ${patient.cumplimiento_semanal >= 3 ? 'bg-green-500' : 'bg-orange-400'}`} 
-                                            style={{ width: `${Math.min((patient.cumplimiento_semanal / 3) * 100, 100)}%` }}
-                                        ></div>
-                                    </div>
-                                    <span className="text-sm font-bold">{patient.cumplimiento_semanal}/3</span>
+                        <div key={patient.id} className={`p-4 ${borderClass}`}>
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <h4 className="font-bold text-gray-800 text-lg">{patient.nombre}</h4>
+                                    <p className="text-xs text-gray-500 font-mono">ID: {patient.id}</p>
                                 </div>
-                            </td>
-                            <td>
                                 <span className={`eva-badge eva-${patient.ultimo_dolor_eva}`}>
                                     EVA {patient.ultimo_dolor_eva}
                                 </span>
-                            </td>
-                            <td className="text-center">
-                                <div className="flex justify-center gap-2">
-                                    <button 
-                                        onClick={() => setSelectedPatient(patient)}
-                                        className="bg-blue-50 text-blue-700 font-bold text-xs px-3 py-1 rounded hover:bg-blue-100"
-                                    >
-                                        Ver
-                                    </button>
-                                    <button 
-                                        onClick={() => openEditModal(patient)}
-                                        className="bg-gray-50 text-gray-600 font-bold text-xs px-3 py-1 rounded hover:bg-gray-200"
-                                    >
-                                        Editar
-                                    </button>
-                                    <button 
-                                        onClick={() => handleDelete(patient.id, patient.nombre)}
-                                        className="bg-red-50 text-red-600 font-bold text-xs px-3 py-1 rounded hover:bg-red-100"
-                                    >
-                                        🗑️
-                                    </button>
+                            </div>
+                            
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="text-sm text-gray-600">
+                                    <span className="block font-bold">Sesiones: {patient.cumplimiento_semanal}/3</span>
+                                    {patient.alerta && <span className="text-red-600 text-xs font-bold">{patient.alertas[0]}</span>}
                                 </div>
-                            </td>
-                        </tr>
+                            </div>
+
+                            <div className="flex gap-2 mt-2">
+                                <button 
+                                    onClick={() => setSelectedPatient(patient)}
+                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow-sm"
+                                >
+                                    Ver Ficha
+                                </button>
+                                <button 
+                                    onClick={() => openEditModal(patient)}
+                                    className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-bold border"
+                                >
+                                    Editar
+                                </button>
+                                 <button 
+                                    onClick={() => handleDelete(patient.id, patient.nombre)}
+                                    className="w-10 bg-red-50 text-red-600 rounded-lg text-lg flex items-center justify-center"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
                     );
                 })}
-                </tbody>
-            </table>
+            </div>
+
+            {/* VISTA ESCRITORIO: TABLA (Oculta en móviles) */}
+            <div className="hidden sm:block overflow-x-auto">
+                <table className="tabla-pacientes w-full">
+                    <thead>
+                    <tr>
+                        <th className="w-16 text-center">Est</th>
+                        <th>ID / RUT</th>
+                        <th>Paciente</th>
+                        <th>Edad</th>
+                        <th>Sesiones (Sem)</th>
+                        <th>Último Dolor</th>
+                        <th className="text-center">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {patients.length === 0 ? (
+                        <tr><td colSpan={7} className="text-center text-gray-500 py-8">No hay pacientes registrados.</td></tr>
+                    ) : patients.map(patient => {
+                        const isCritical = patient.ultimo_dolor_eva >= 8;
+                        const isWarning = patient.cumplimiento_semanal < 3;
+                        let rowClass = "";
+                        let badge = <span className="text-green-500 text-2xl">●</span>;
+
+                        if (isCritical) {
+                            rowClass = "alerta-critica";
+                            badge = <span className="text-red-600 text-2xl">🚨</span>;
+                        } else if (isWarning) {
+                            rowClass = "alerta-warning";
+                            badge = <span className="text-orange-400 text-2xl">⚠️</span>;
+                        }
+
+                        return (
+                            <tr key={patient.id} className={rowClass}>
+                                <td className="text-center">{badge}</td>
+                                <td className="font-mono font-bold text-gray-600">{patient.id}</td>
+                                <td>
+                                    <div className="font-bold text-gray-800">{patient.nombre}</div>
+                                    {patient.alerta && <div className="text-xs text-red-500 font-semibold">{patient.alertas[0]}</div>}
+                                </td>
+                                <td>{patient.edad}</td>
+                                <td>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-24 bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div 
+                                                className={`h-full ${patient.cumplimiento_semanal >= 3 ? 'bg-green-500' : 'bg-orange-400'}`} 
+                                                style={{ width: `${Math.min((patient.cumplimiento_semanal / 3) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <span className="text-sm font-bold">{patient.cumplimiento_semanal}/3</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span className={`eva-badge eva-${patient.ultimo_dolor_eva}`}>
+                                        EVA {patient.ultimo_dolor_eva}
+                                    </span>
+                                </td>
+                                <td className="text-center">
+                                    <div className="flex justify-center gap-2">
+                                        <button 
+                                            onClick={() => setSelectedPatient(patient)}
+                                            className="bg-blue-50 text-blue-700 font-bold text-xs px-3 py-1 rounded hover:bg-blue-100"
+                                        >
+                                            Ver
+                                        </button>
+                                        <button 
+                                            onClick={() => openEditModal(patient)}
+                                            className="bg-gray-50 text-gray-600 font-bold text-xs px-3 py-1 rounded hover:bg-gray-200"
+                                        >
+                                            Editar
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDelete(patient.id, patient.nombre)}
+                                            className="bg-red-50 text-red-600 font-bold text-xs px-3 py-1 rounded hover:bg-red-100"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                    </tbody>
+                </table>
+            </div>
         </div>
       </div>
 
@@ -226,7 +284,7 @@ export const DoctorDashboard: React.FC = () => {
                             placeholder="Ej: 12345678"
                             value={formData.id}
                             onChange={(e) => setFormData({...formData, id: e.target.value})}
-                            disabled={isEditing} // ID cannot be changed once created for simplicity
+                            disabled={isEditing} 
                             required
                         />
                         {!isEditing && <p className="text-xs text-gray-500 mt-1">Este será el código de acceso del paciente.</p>}
@@ -288,7 +346,7 @@ export const DoctorDashboard: React.FC = () => {
       {selectedPatient && (
         <PatientDetailModal 
             patient={selectedPatient} 
-            onClose={() => { setSelectedPatient(null); loadData(); }} // RELOAD DATA ON CLOSE
+            onClose={() => { setSelectedPatient(null); loadData(); }} 
         />
       )}
     </div>

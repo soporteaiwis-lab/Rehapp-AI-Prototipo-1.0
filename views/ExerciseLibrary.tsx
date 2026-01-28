@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, ExerciseAssignment, ExerciseSessionLog } from '../types';
 import { api } from '../services/api';
 import { VideoPlayerModal } from '../components/VideoPlayerModal';
@@ -10,9 +10,6 @@ interface Props {
 export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const [assignments, setAssignments] = useState<ExerciseAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Ref for horizontal scrolling
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // State for modals
   const [selectedVideoAssignment, setSelectedVideoAssignment] = useState<ExerciseAssignment | null>(null);
@@ -33,18 +30,6 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   useEffect(() => {
     loadExercises();
   }, [user.id]);
-
-  // Scroll Handler for Desktop Arrows
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-        const { current } = scrollContainerRef;
-        const scrollAmount = 320; // Aproximadamente el ancho de una tarjeta
-        current.scrollBy({
-            left: direction === 'left' ? -scrollAmount : scrollAmount,
-            behavior: 'smooth'
-        });
-    }
-  };
 
   // Handle completion (via Modal or Quick Check)
   const handleLogSession = async (logData: Partial<ExerciseSessionLog>, videoIdParam?: string) => {
@@ -114,168 +99,113 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   // Stats
   const totalAssigned = assignments.length;
   const completedTodayCount = assignments.filter(a => a.completed_today).length;
-  const progressPercentage = totalAssigned > 0 ? (completedTodayCount / totalAssigned) * 100 : 0;
   
-  // Find next pending exercise for the Hero section
-  const nextUp = assignments.find(a => !a.completed_today) || assignments[0];
-
   if (loading && assignments.length === 0) return <div className="p-10 text-center text-gray-500">Cargando ejercicios...</div>;
 
   return (
     <div className="pantalla-ejercicios bg-gray-100 min-h-screen pb-24">
       
-      {/* HEADER NETFLIX STYLE */}
+      {/* HEADER */}
       <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex justify-between items-center">
-         <h1 className="text-2xl font-extrabold text-gray-800">🎬 Mis Ejercicios</h1>
-         <div className="text-right">
-             <div className="text-xs text-gray-400 font-bold uppercase">Tu Progreso</div>
-             <div className="text-xl font-black text-blue-600 leading-none">{completedTodayCount}/{totalAssigned}</div>
+         <h1 className="text-xl sm:text-2xl font-extrabold text-gray-800">🎬 Mis Ejercicios</h1>
+         <div className="text-right bg-blue-50 px-3 py-1 rounded-lg">
+             <div className="text-[10px] text-gray-400 font-bold uppercase">Tu Progreso</div>
+             <div className="text-lg font-black text-blue-600 leading-none">{completedTodayCount} / {totalAssigned}</div>
          </div>
       </div>
 
-      {/* HERO SECTION (Featured Next Exercise) */}
-      {nextUp && (
-        <div className="p-4">
-             <div className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">
-                 {nextUp.completed_today ? '¡Todo listo! Repasa si quieres:' : 'Siguiente ejercicio:'}
-             </div>
-             <div 
-                className="relative w-full h-56 rounded-2xl overflow-hidden shadow-xl bg-gray-900 cursor-pointer group"
-                onClick={() => setSelectedVideoAssignment(nextUp)}
-             >
-                <img 
-                    src={`https://img.youtube.com/vi/${nextUp.video.youtube_video_id}/hqdefault.jpg`} 
-                    alt="Featured"
-                    className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity"
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-2">
-                        <span className="text-4xl ml-1">▶️</span>
-                    </div>
-                    <span className="text-white font-bold text-lg drop-shadow-md text-center px-4">
-                        {nextUp.video.titulo}
-                    </span>
-                </div>
-                {nextUp.completed_today && (
-                     <div className="absolute top-4 right-4 bg-green-500 text-white font-bold px-3 py-1 rounded-full text-xs shadow-lg">
-                         ✓ COMPLETADO
-                     </div>
-                )}
-             </div>
-        </div>
-      )}
+      <div className="p-4 max-w-7xl mx-auto">
+        <h2 className="text-lg font-bold text-gray-700 mb-4">Tu Rutina Diaria</h2>
 
-      {/* HORIZONTAL SLIDER (NETFLIX STYLE) */}
-      <div className="mt-4 relative group">
-        <h2 className="px-4 text-lg font-bold text-gray-700 mb-3">Tu Rutina Diaria</h2>
-        
-        {/* DESKTOP NAVIGATION ARROWS (Hidden on mobile) */}
-        {assignments.length > 1 && (
-            <>
-                <button 
-                    onClick={() => scroll('left')}
-                    className="hidden sm:flex absolute left-2 top-[55%] -translate-y-1/2 z-20 w-12 h-12 bg-white/90 rounded-full shadow-lg items-center justify-center text-blue-600 font-bold hover:bg-blue-50 border border-gray-100 transition-all opacity-0 group-hover:opacity-100"
-                    aria-label="Scroll left"
-                >
-                    ◀
-                </button>
-                <button 
-                    onClick={() => scroll('right')}
-                    className="hidden sm:flex absolute right-2 top-[55%] -translate-y-1/2 z-20 w-12 h-12 bg-white/90 rounded-full shadow-lg items-center justify-center text-blue-600 font-bold hover:bg-blue-50 border border-gray-100 transition-all opacity-0 group-hover:opacity-100"
-                    aria-label="Scroll right"
-                >
-                    ▶
-                </button>
-            </>
-        )}
-
-        {/* SCROLL CONTAINER */}
-        <div 
-            ref={scrollContainerRef}
-            className="flex overflow-x-auto gap-4 px-4 pb-12 snap-x snap-mandatory hide-scrollbar scroll-smooth"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-        >
+        {/* RESPONSIVE GRID: 1 column mobile, 2 tablet, 3 desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            
             {assignments.map(assign => (
                 <div 
                     key={assign.id} 
-                    className="snap-center shrink-0 w-[85vw] sm:w-[320px] bg-white rounded-2xl shadow-md overflow-hidden flex flex-col relative border border-gray-100"
+                    className={`bg-white rounded-2xl shadow-md overflow-hidden flex flex-col border border-gray-100 transition-shadow hover:shadow-lg ${assign.completed_today ? 'opacity-80' : ''}`}
                 >
                     {/* Status Strip */}
                     {assign.completed_today && (
-                        <div className="bg-green-100 text-green-700 text-xs font-bold text-center py-1">
+                        <div className="bg-green-100 text-green-700 text-xs font-bold text-center py-2">
                             ✅ EJERCICIO REALIZADO
                         </div>
                     )}
 
                     {/* Thumbnail Area */}
-                    <div className="relative h-44 bg-gray-200 cursor-pointer" onClick={() => setSelectedVideoAssignment(assign)}>
+                    <div className="relative h-48 sm:h-52 bg-gray-200 cursor-pointer group" onClick={() => setSelectedVideoAssignment(assign)}>
                         <img 
                             src={`https://img.youtube.com/vi/${assign.video.youtube_video_id}/mqdefault.jpg`} 
-                            className={`w-full h-full object-cover ${assign.completed_today ? 'grayscale opacity-70' : ''}`}
+                            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${assign.completed_today ? 'grayscale' : ''}`}
                             alt={assign.video.titulo}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-5xl drop-shadow-lg opacity-80">▶️</span>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+                            <span className="text-6xl drop-shadow-lg opacity-90 text-white">▶️</span>
                         </div>
-                        <div className="absolute top-2 left-2 bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md">
+                        <div className="absolute top-3 left-3 bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md text-sm border-2 border-white">
                             {assign.video.numero_orden}
                         </div>
                     </div>
 
                     {/* Content Body */}
                     <div className="p-4 flex flex-col flex-1">
-                        <h3 className="font-bold text-gray-800 text-lg leading-tight mb-1 line-clamp-2 min-h-[3rem]">
+                        <h3 className="font-bold text-gray-900 text-lg leading-snug mb-2 line-clamp-2">
                             {assign.video.titulo}
                         </h3>
-                        <p className="text-xs text-gray-500 font-semibold mb-4">
-                            {assign.video.repeticiones_sugeridas.split('•')[0]}
-                        </p>
+                        
+                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold text-gray-500 bg-gray-50 p-2 rounded-lg">
+                            <span>🔄 {assign.video.repeticiones_sugeridas.split('•')[0] || '2 series'}</span>
+                            <span className="text-gray-300">|</span>
+                            <span>⚡ {assign.video.nivel_dificultad}</span>
+                        </div>
 
                         {/* ACTION BUTTONS */}
-                        <div className="mt-auto flex flex-col gap-2">
+                        <div className="mt-auto flex flex-col gap-3">
                             <button 
                                 onClick={() => setSelectedVideoAssignment(assign)}
-                                className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm active:scale-95 transition-transform flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm active:scale-95 transition-transform flex items-center justify-center gap-2"
                             >
                                 <span>▶</span> VER VIDEO
                             </button>
                             
-                            <div className="flex gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 <button 
                                     onClick={() => setTextGuideAssignment(assign)}
-                                    className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-sm active:scale-95 transition-transform flex items-center justify-center gap-1 border border-gray-200"
+                                    className="py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm active:scale-95 transition-transform flex items-center justify-center gap-1 border border-gray-200"
                                 >
                                     <span>📄</span> GUÍA
                                 </button>
                                 
-                                {!assign.completed_today && (
+                                {!assign.completed_today ? (
                                     <button 
                                         onClick={() => handleQuickComplete(assign)}
-                                        className="flex-1 py-2 bg-green-50 hover:bg-green-100 text-green-700 font-bold rounded-lg text-sm active:scale-95 transition-transform flex items-center justify-center gap-1 border border-green-200"
+                                        className="py-3 bg-green-50 hover:bg-green-100 text-green-700 font-bold rounded-xl text-sm active:scale-95 transition-transform flex items-center justify-center gap-1 border border-green-200"
                                     >
                                         <span>✅</span> LISTO
                                     </button>
+                                ) : (
+                                    <div className="flex items-center justify-center font-bold text-green-600 text-sm bg-green-50 rounded-xl border border-green-100">
+                                        Hecho
+                                    </div>
                                 )}
                             </div>
                         </div>
                     </div>
                 </div>
             ))}
-            
-            {/* Spacer for right padding in scroll to ensure last item is visible */}
-            <div className="w-6 shrink-0 h-1"></div>
+
         </div>
       </div>
 
       {/* TEXT GUIDE MODAL */}
       {textGuideAssignment && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-slide-up">
-                <div className="bg-gray-100 p-4 flex justify-between items-center border-b">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-slide-up max-h-[90vh] flex flex-col">
+                <div className="bg-gray-100 p-4 flex justify-between items-center border-b shrink-0">
                     <h3 className="font-bold text-lg text-gray-800">Guía de Texto</h3>
                     <button onClick={() => setTextGuideAssignment(null)} className="w-8 h-8 flex items-center justify-center bg-gray-300 rounded-full font-bold">✕</button>
                 </div>
-                <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <div className="p-6 overflow-y-auto">
                     <h2 className="text-2xl font-extrabold text-blue-900 mb-4">{textGuideAssignment.video.titulo}</h2>
                     
                     <div className="mb-6">
@@ -294,17 +224,13 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
                         </div>
                     </div>
 
-                    {!textGuideAssignment.completed_today ? (
+                    {!textGuideAssignment.completed_today && (
                         <button 
                             onClick={() => handleQuickComplete(textGuideAssignment)}
                             className="w-full py-4 bg-green-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-transform"
                         >
                             ✅ YA REALICÉ ESTE EJERCICIO
                         </button>
-                    ) : (
-                        <div className="text-center text-green-600 font-bold border-2 border-green-200 rounded-xl p-3 bg-green-50">
-                            ¡Ejercicio Completado!
-                        </div>
                     )}
                 </div>
             </div>
