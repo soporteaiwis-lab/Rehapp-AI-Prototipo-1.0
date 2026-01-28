@@ -14,7 +14,7 @@ export const getLocalDateString = (): string => {
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
 
-// MOCK DATA FOR VIDEOS
+// MOCK DATA FOR VIDEOS - ENSURING ALL 8 ARE PRESENT
 export const MOCK_VIDEOS: ExerciseVideo[] = [
   { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: 'Ejercicio básico de fuerza', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
   { id: 'v2', numero_orden: 2, titulo: 'Remo con Banda Elástica', descripcion: 'Ejercicio de espalda y postura', youtube_video_id: 'J3VFboUbubo', tipo_ejercicio: 'resistencia', grupos_musculares: ['dorsal', 'trapecio'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica'], nivel_dificultad: 'intermedio' },
@@ -118,7 +118,7 @@ export const api = {
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
-    // 2. Get assignments
+    // 2. Get assignments - Defaulting to ALL 8 videos for prototype
     const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
     let assignmentsIds = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8']; 
     if (assignmentsJson) {

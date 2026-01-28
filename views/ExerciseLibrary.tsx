@@ -71,7 +71,6 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
         // Éxito silencioso, recargamos datos en segundo plano para asegurar consistencia
         // Usamos silent=true para no mostrar spinner de carga y mantener la fluidez
         await loadExercises(true);
-        // Opcional: alert("¡Ejercicio registrado correctamente! 🎉"); 
       } else {
         // Si falla, revertimos y avisamos
         alert(result.message || "Error al registrar.");
