@@ -567,7 +567,72 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
                         </div>
                     </div>
                 </div>
+              </div>
 
+               {/* NUEVA SECCIÓN: BITÁCORA DETALLADA */}
+              <div className="mt-8 bg-white rounded-xl border shadow-sm overflow-hidden">
+                <div className="bg-blue-50 px-4 py-3 border-b border-blue-100 flex justify-between items-center">
+                    <h3 className="font-bold text-blue-900">Bitácora Detallada de Ejecución</h3>
+                    <span className="text-xs text-blue-600 font-semibold bg-blue-100 px-2 py-1 rounded">
+                        Últimos Registros
+                    </span>
+                </div>
+                <div className="overflow-x-auto max-h-80">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-50 text-gray-500 uppercase text-xs sticky top-0">
+                            <tr>
+                                <th className="p-3 text-left">Fecha</th>
+                                <th className="p-3 text-left">Ejercicio</th>
+                                <th className="p-3 text-center">Carga Real</th>
+                                <th className="p-3 text-center">Dif. (1-10)</th>
+                                <th className="p-3 text-center">Dolor (EVA)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {exerciseLogs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-4 text-center text-gray-400 italic">
+                                        No hay registros de ejercicios aún.
+                                    </td>
+                                </tr>
+                            ) : (
+                                exerciseLogs.map((log, index) => {
+                                    const video = MOCK_VIDEOS.find(v => v.id === log.video_id);
+                                    const pain = log.dolor_durante_ejercicio || 0;
+                                    const isHighPain = pain >= 5;
+                                    
+                                    return (
+                                        <tr key={index} className="hover:bg-gray-50">
+                                            <td className="p-3 text-gray-600 whitespace-nowrap">
+                                                {log.fecha_realizacion}
+                                            </td>
+                                            <td className="p-3 font-semibold text-gray-800">
+                                                {video?.titulo || 'Desconocido'}
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono font-bold">
+                                                    {log.series_completadas}x{log.repeticiones_completadas}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                <span className="font-bold text-blue-600">{log.dificultad_percibida}</span>
+                                            </td>
+                                            <td className="p-3 text-center">
+                                                {pain > 0 ? (
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${isHighPain ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                        EVA {pain}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-green-500 font-bold text-xs">Sin Dolor</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
               </div>
             </div>
           )}

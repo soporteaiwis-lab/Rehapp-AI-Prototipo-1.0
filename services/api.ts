@@ -310,7 +310,12 @@ export const api = {
   getPatientExerciseLogs: async (patientId: string): Promise<ExerciseSessionLog[]> => {
     const logsJson = localStorage.getItem(LOGS_KEY);
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
-    return logs.filter(l => String(l.patient_id) === String(patientId));
+    const patientLogs = logs.filter(l => String(l.patient_id) === String(patientId));
+    
+    // Sort by timestamp descending (newest first) for better visibility
+    return patientLogs.sort((a, b) => {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
   },
 
   // NEW: Save Clinical Trial Metrics (ITB, 6MWT, etc.)
