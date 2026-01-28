@@ -219,6 +219,276 @@
       .eva-badge.eva-0 { background-color: #e8f5e9; color: #2e7d32; }
       .eva-badge.eva-5 { background-color: #fff3e0; color: #ef6c00; }
       .eva-badge.eva-8, .eva-badge.eva-9, .eva-badge.eva-10 { background-color: #ffebee; color: #c62828; }
+
+      /* --- VIDEO MODULE STYLES --- */
+
+      .video-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        transition: transform 0.1s;
+      }
+      .video-card:active { transform: scale(0.98); }
+
+      .video-thumbnail {
+        position: relative;
+        width: 100%;
+        height: 200px;
+        background: #000;
+        overflow: hidden;
+      }
+      .video-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.8;
+      }
+
+      .play-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 64px;
+        color: white;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        opacity: 0.9;
+      }
+
+      .badge-numero {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: var(--primary-blue);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+
+      .badge-estado {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: bold;
+      }
+      .badge-estado.completado { background: #e8f5e9; color: #2e7d32; }
+      .badge-estado.pendiente { background: #fff3e0; color: #ef6c00; }
+
+      /* Modal Player */
+      .modal-video-player {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        z-index: 9999;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .video-embed-wrapper {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 */
+        height: 0;
+        background: black;
+      }
+      .video-embed-wrapper iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Numeric Selectors */
+      .selector-numero {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        justify-content: center;
+        margin: 12px 0;
+      }
+      .selector-numero input {
+        width: 80px;
+        height: 60px;
+        font-size: 32px;
+        text-align: center;
+        border: 3px solid var(--primary-blue);
+        border-radius: 12px;
+        color: #333;
+        font-weight: bold;
+      }
+      .btn-menos, .btn-mas {
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+        border-radius: 50%;
+        border: none;
+        background: var(--primary-blue);
+        color: white;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .btn-menos:active, .btn-mas:active { background: #1976D2; transform: scale(0.95); }
+
+      /* Difficulty Scale */
+      .escala-dificultad {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .dif-btn {
+        aspect-ratio: 1;
+        background: white;
+        border: 2px solid #ddd;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #555;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .dif-btn.selected {
+        background: var(--primary-blue);
+        color: white;
+        border-color: var(--primary-blue);
+        transform: scale(1.1);
+      }
+      
+      .toggle-grupo {
+        display: flex;
+        background: #eee;
+        border-radius: 12px;
+        padding: 4px;
+        margin-top: 8px;
+      }
+      .toggle-btn {
+        flex: 1;
+        padding: 12px;
+        border-radius: 10px;
+        font-weight: bold;
+        color: #666;
+      }
+      .toggle-btn.activo {
+        background: white;
+        color: #333;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .toggle-btn.activo.rojo {
+        color: var(--primary-red);
+      }
+
+      /* --- GESTIÓN MÉDICA DE VIDEOS --- */
+      
+      .thumbnail-small {
+        width: 100px;
+        height: 65px;
+        object-fit: cover;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+        border: 1px solid #ddd;
+      }
+
+      .thumbnail-small:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+
+      .badge-musculo {
+        display: inline-block;
+        background: #e3f2fd;
+        color: #1565C0;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: bold;
+        margin: 2px;
+        text-transform: uppercase;
+      }
+
+      .checkbox-asignar {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        accent-color: var(--primary-green);
+      }
+
+      .btn-asignar-rutina {
+        width: 100%;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        margin-top: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.1s;
+      }
+      .btn-asignar-rutina:active { transform: scale(0.98); }
+
+      /* Tabla de Cumplimiento */
+      .tabla-cumplimiento {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      .tabla-cumplimiento th {
+        font-size: 12px;
+        color: #666;
+        padding: 8px 4px;
+        text-align: center;
+        border-bottom: 2px solid #eee;
+      }
+      .tabla-cumplimiento td {
+        text-align: center;
+        padding: 8px 4px;
+        border-bottom: 1px solid #f5f5f5;
+        font-size: 14px;
+      }
+
+      .check-completado {
+        color: var(--primary-green);
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .check-falta {
+        color: #e0e0e0;
+        font-size: 20px;
+      }
+
+      .alerta-dolor-item {
+        background: #ffebee;
+        border-left: 4px solid var(--primary-red);
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
     </style>
   <script type="importmap">
 {

@@ -1,5 +1,5 @@
-import { GoogleGenAI, SchemaType } from "@google/genai";
-import { User, Role, WalkSession, PainResponse, Recipe, PatientSummary, PAIN_THRESHOLD_ALERT } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
+import { User, Role, WalkSession, PainResponse, Recipe, PatientSummary, ExerciseAssignment, ExerciseVideo, ExerciseSessionLog } from '../types';
 import { storageService } from './storageService';
 
 // Initialize Gemini
@@ -7,9 +7,24 @@ import { storageService } from './storageService';
 const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = 'gemini-3-flash-preview';
 
+// MOCK DATA FOR VIDEOS
+export const MOCK_VIDEOS: ExerciseVideo[] = [
+  { id: 'v1', numero_orden: 1, titulo: 'Variante Pararse y Sentarse', descripcion: '', youtube_video_id: 'O7oFiCMN25E', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps', 'gluteos'], repeticiones_sugeridas: '2-3 series • 8-15 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
+  { id: 'v2', numero_orden: 2, titulo: 'Remo con Banda Elástica', descripcion: '', youtube_video_id: 'J3VFboUbubo', tipo_ejercicio: 'resistencia', grupos_musculares: ['dorsal', 'trapecio'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica'], nivel_dificultad: 'intermedio' },
+  { id: 'v3', numero_orden: 3, titulo: 'Pararse y Sentarse', descripcion: '', youtube_video_id: 'gWdgSzPrncU', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 8-12 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
+  { id: 'v4', numero_orden: 4, titulo: 'Extensión de Glúteo', descripcion: '', youtube_video_id: 'G00dG-33QqA', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['gluteos'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'intermedio' },
+  { id: 'v5', numero_orden: 5, titulo: 'Extensión de Cuádriceps (V1)', descripcion: '', youtube_video_id: 'pX7DEPwYXEE', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'silla'], nivel_dificultad: 'principiante' },
+  { id: 'v6', numero_orden: 6, titulo: 'Extensión de Cuádriceps (V2)', descripcion: '', youtube_video_id: 'zEa1Eq3yIsw', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['cuadriceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['tobilleras', 'silla'], nivel_dificultad: 'intermedio' },
+  { id: 'v7', numero_orden: 7, titulo: 'Elevación de Talones', descripcion: '', youtube_video_id: '0caP82ZUo1I', tipo_ejercicio: 'fuerza_eeii', grupos_musculares: ['pantorrillas'], repeticiones_sugeridas: '2-3 series • 15-20 reps', equipamiento_necesario: ['silla'], nivel_dificultad: 'principiante' },
+  { id: 'v8', numero_orden: 8, titulo: 'Curl de Bíceps', descripcion: '', youtube_video_id: '-FNnffnCPxE', tipo_ejercicio: 'resistencia', grupos_musculares: ['biceps'], repeticiones_sugeridas: '2-3 series • 10-15 reps', equipamiento_necesario: ['banda_elastica', 'mancuernas'], nivel_dificultad: 'principiante' },
+];
+
+// Local storage key for logs
+const LOGS_KEY = 'rehapp_exercise_logs';
+const ASSIGNMENTS_KEY = 'rehapp_assignments';
+
 /**
  * API SERVICE LAYER
- * Mimics the requested REST Endpoints.
  */
 export const api = {
 
@@ -29,14 +44,10 @@ export const api = {
 
   /**
    * ENDPOINT 2: POST /api/activity/report-pain
-   * Includes Critical Logic validated by Gemini (conceptually)
    */
   reportPain: async (sessionId: string, nivelEva: number): Promise<PainResponse> => {
-    // 1. Strict Deterministic Logic (The "Reglas de Oro")
     if (nivelEva >= 8) {
-        // We log the event internally
         console.log(`CRITICAL PAIN EVENT: Session ${sessionId}, EVA ${nivelEva}`);
-        
         return {
             accion: "ALTO_INMEDIATO",
             mensaje: "🛑 DESCANSA AHORA. El dolor es demasiado alto. No continúes hasta que el dolor desaparezca completamente.",
@@ -52,7 +63,6 @@ export const api = {
         };
     }
 
-    // 2. For low pain, we can ask Gemini for a motivational message (Optional, kept simple for speed)
     return {
         accion: "CONTINUAR",
         mensaje: "👍 Vas muy bien. Mantén el ritmo suave.",
@@ -62,7 +72,6 @@ export const api = {
 
   /**
    * ENDPOINT 3: POST /api/ai/nutrition
-   * Generates PAD-specific recipes using Gemini
    */
   generateNutritionPlan: async (ingredientes: string[], restricciones: string): Promise<Recipe | null> => {
     try {
@@ -86,7 +95,16 @@ export const api = {
         model: model,
         contents: prompt,
         config: {
-          responseMimeType: "application/json"
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              nombre: { type: Type.STRING },
+              beneficios: { type: Type.STRING },
+              ingredientes: { type: Type.ARRAY, items: { type: Type.STRING } },
+              preparacion: { type: Type.ARRAY, items: { type: Type.STRING } }
+            }
+          }
         }
       });
 
@@ -102,20 +120,15 @@ export const api = {
 
   /**
    * ENDPOINT 4: GET /api/doctor/dashboard/:doctor_id
-   * Aggregates data and creates alerts
    */
   getDoctorDashboard: async (doctorId: string): Promise<PatientSummary[]> => {
     const patients = await storageService.getPatients();
     const allSessions = await storageService.getSessions();
     
-    // Logic to summarize per patient
     return patients.map(p => {
         const pSessions = allSessions.filter(s => s.patientId === p.id);
-        
-        // Logic: < 3 sessions last week (Simulated by just counting total for prototype)
         const weeklyCompliance = pSessions.length; 
         
-        // Logic: Last 2 sessions had High Pain?
         const sortedSessions = [...pSessions].sort((a,b) => Number(b.id) - Number(a.id));
         const lastSession = sortedSessions[0];
         const lastEva = lastSession ? lastSession.painLevel : 0;
@@ -131,12 +144,133 @@ export const api = {
             id: p.id,
             nombre: p.name,
             edad: p.age || 70,
-            meta_pasos: 4500, // Mock from plan
+            meta_pasos: 4500,
             cumplimiento_semanal: weeklyCompliance,
             alerta: alerts.length > 0,
             ultimo_dolor_eva: lastEva,
             alertas: alerts
         };
     });
+  },
+
+  /**
+   * ENDPOINT 5: GET /api/exercises/assigned/:patient_id
+   * Fetches videos assigned to the patient.
+   */
+  getAssignedExercises: async (patientId: string): Promise<ExerciseAssignment[]> => {
+    await new Promise(r => setTimeout(r, 300)); // Simulate net
+    
+    const logsJson = localStorage.getItem(LOGS_KEY);
+    const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
+    const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
+    
+    // Default assignment if empty (Video 1 and 3)
+    let assignmentsIds = ['v1', 'v3']; 
+    if (assignmentsJson) {
+        const allAssignments = JSON.parse(assignmentsJson);
+        const patientData = allAssignments[patientId];
+        // Handle both legacy (array) and new (object) format
+        if (patientData) {
+            assignmentsIds = Array.isArray(patientData) ? patientData : patientData.videoIds;
+        }
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Filter MOCK_VIDEOS based on assignment
+    const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
+
+    return assignedVideos.map(video => {
+        const completed = logs.some(l => 
+            l.patient_id === patientId && 
+            l.video_id === video.id && 
+            l.fecha_realizacion === today &&
+            l.completado
+        );
+
+        return {
+            id: `assign_${video.id}`,
+            patient_id: patientId,
+            video_id: video.id,
+            video: video,
+            completed_today: completed
+        };
+    });
+  },
+
+  /**
+   * ENDPOINT 6: POST /api/exercises/log
+   * Logs an exercise session.
+   */
+  logExerciseSession: async (log: ExerciseSessionLog): Promise<{success: boolean, message?: string}> => {
+    await new Promise(r => setTimeout(r, 400));
+
+    // Validar duplicados hoy (Constraint Check)
+    const logsJson = localStorage.getItem(LOGS_KEY);
+    const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
+    
+    const existing = logs.find(l => 
+        l.patient_id === log.patient_id && 
+        l.video_id === log.video_id && 
+        l.fecha_realizacion === log.fecha_realizacion
+    );
+
+    if (existing) {
+        return { success: false, message: "Ya registraste este ejercicio hoy." };
+    }
+
+    logs.push(log);
+    localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+    return { success: true };
+  },
+
+  /**
+   * ENDPOINT 7: POST /api/doctor/assign-routine
+   * Saves a new video routine for a patient with full config.
+   */
+  saveExerciseRoutine: async (patientId: string, videoIds: string[], config: any) => {
+    await new Promise(r => setTimeout(r, 600));
+    
+    const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
+    const allAssignments = assignmentsJson ? JSON.parse(assignmentsJson) : {};
+    
+    // Overwrite for this patient with enhanced structure
+    allAssignments[patientId] = {
+        videoIds: videoIds,
+        config: config,
+        updatedAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(allAssignments));
+    
+    return { success: true };
+  },
+
+  /**
+   * ENDPOINT 8: GET /api/doctor/routine-config/:patient_id
+   * Get the routine configuration settings.
+   */
+  getRoutineConfig: async (patientId: string) => {
+    const assignmentsJson = localStorage.getItem(ASSIGNMENTS_KEY);
+    if (!assignmentsJson) return null;
+    
+    const allAssignments = JSON.parse(assignmentsJson);
+    const data = allAssignments[patientId];
+    
+    if (data && !Array.isArray(data)) {
+        return data.config;
+    }
+    return null;
+  },
+
+  /**
+   * ENDPOINT 9: GET /api/doctor/patient-history/:patient_id
+   * Get extended history including video logs for charts.
+   */
+  getPatientExerciseLogs: async (patientId: string): Promise<ExerciseSessionLog[]> => {
+    await new Promise(r => setTimeout(r, 300));
+    const logsJson = localStorage.getItem(LOGS_KEY);
+    const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
+    return logs.filter(l => l.patient_id === patientId);
   }
 };

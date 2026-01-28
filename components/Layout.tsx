@@ -34,7 +34,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, curren
 
       {/* Bottom Navigation (Only for Patients) */}
       {user.role === Role.PATIENT && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
           <NavButton 
             active={currentView === 'home'} 
             onClick={() => setView('home')} 
@@ -46,6 +46,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, curren
             onClick={() => setView('tracker')} 
             icon="🚶" 
             label="Caminar" 
+          />
+          <NavButton 
+            active={currentView === 'exercises'} 
+            onClick={() => setView('exercises')} 
+            icon="📹" 
+            label="Videos" 
           />
           <NavButton 
             active={currentView === 'nutrition'} 
@@ -62,9 +68,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, curren
 const NavButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: string, label: string }) => (
   <button 
     onClick={onClick}
-    className={`flex flex-col items-center w-full ${active ? 'text-blue-700' : 'text-gray-400'}`}
+    className={`flex flex-col items-center w-full py-1 ${active ? 'text-blue-700' : 'text-gray-400'}`}
   >
-    <span className="text-2xl mb-1">{icon}</span>
-    <span className={`text-xs font-bold ${active ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+    <span className="text-2xl mb-0.5">{icon}</span>
+    <span className={`text-[10px] font-bold ${active ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
   </button>
 );

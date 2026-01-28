@@ -1,3 +1,4 @@
+
 export enum Role {
   PATIENT = 'paciente',
   DOCTOR = 'medico',
@@ -75,6 +76,40 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+}
+
+// VIDEO MODULE TYPES
+
+export interface ExerciseVideo {
+  id: string;
+  numero_orden: number;
+  titulo: string;
+  descripcion: string;
+  youtube_video_id: string;
+  tipo_ejercicio: string;
+  grupos_musculares: string[];
+  repeticiones_sugeridas: string;
+  equipamiento_necesario: string[];
+  nivel_dificultad: string;
+}
+
+export interface ExerciseAssignment {
+  id: string;
+  patient_id: string;
+  video_id: string;
+  video: ExerciseVideo; // Joined
+  completed_today: boolean; // Computed for UI
+}
+
+export interface ExerciseSessionLog {
+  patient_id: string;
+  video_id: string;
+  fecha_realizacion: string;
+  series_completadas: number;
+  repeticiones_completadas: number;
+  dificultad_percibida: number;
+  dolor_durante_ejercicio: number | null;
+  completado: boolean;
 }
 
 export const PAIN_THRESHOLD_ALERT = 8;

@@ -60,7 +60,10 @@ export const PatientHome: React.FC<Props> = ({ user, setView }) => {
 
       {/* Botones Secundarios */}
       <div className="space-y-3 pt-2 pb-8">
-        <button className="btn-secundario flex items-center justify-center gap-2">
+        <button 
+            className="btn-secundario flex items-center justify-center gap-2"
+            onClick={() => setView('exercises')}
+        >
             <span>📹</span> Ver Ejercicios
         </button>
         <button 

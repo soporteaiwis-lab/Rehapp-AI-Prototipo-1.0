@@ -63,15 +63,61 @@ CREATE TABLE public.pain_events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. EXERCISE VIDEOS
+-- ==========================================
+-- NEW VIDEO MODULE (PHASE 2)
+-- ==========================================
+
+-- 7. EXERCISE VIDEOS (Master Table)
 CREATE TABLE public.exercise_videos (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    numero_orden INTEGER UNIQUE NOT NULL,
     titulo TEXT NOT NULL,
     descripcion TEXT,
-    url_video TEXT NOT NULL,
-    tipo TEXT CHECK (tipo IN ('fuerza_eeii', 'calentamiento', 'estiramiento')),
+    youtube_video_id TEXT NOT NULL,
+    youtube_url TEXT NOT NULL,
+    tipo_ejercicio TEXT CHECK (tipo_ejercicio IN ('fuerza_eeii', 'resistencia', 'equilibrio')),
+    grupos_musculares TEXT[], -- Array of strings
     duracion_segundos INTEGER,
+    repeticiones_sugeridas TEXT,
+    equipamiento_necesario TEXT[], -- Array of strings
+    nivel_dificultad TEXT CHECK (nivel_dificultad IN ('principiante', 'intermedio', 'avanzado')),
+    activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. PATIENT EXERCISE ASSIGNMENTS (Prescriptions)
+CREATE TABLE public.patient_exercise_assignments (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    patient_id UUID REFERENCES public.users(id) NOT NULL,
+    video_id UUID REFERENCES public.exercise_videos(id) NOT NULL,
+    assigned_by_doctor_id UUID REFERENCES public.users(id) NOT NULL,
+    fecha_asignacion DATE DEFAULT CURRENT_DATE NOT NULL,
+    frecuencia_semanal INTEGER DEFAULT 3,
+    series_asignadas INTEGER DEFAULT 2,
+    repeticiones_asignadas INTEGER DEFAULT 10,
+    activo BOOLEAN DEFAULT TRUE,
+    notas_medico TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 9. EXERCISE SESSION LOGS (Execution History)
+CREATE TABLE public.exercise_session_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    patient_id UUID REFERENCES public.users(id) NOT NULL,
+    video_id UUID REFERENCES public.exercise_videos(id) NOT NULL,
+    fecha_realizacion DATE DEFAULT CURRENT_DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME,
+    series_completadas INTEGER,
+    repeticiones_completadas INTEGER,
+    dificultad_percibida INTEGER CHECK (dificultad_percibida >= 1 AND dificultad_percibida <= 10),
+    completado BOOLEAN DEFAULT FALSE,
+    dolor_durante_ejercicio INTEGER CHECK (dolor_durante_ejercicio >= 1 AND dolor_durante_ejercicio <= 10),
+    notas_paciente TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- CONSTRAINT: Patient cannot log the same exercise twice in one day
+    CONSTRAINT unique_exercise_per_day UNIQUE (patient_id, video_id, fecha_realizacion)
 );
 
 -- INDICES FOR OPTIMIZATION
@@ -81,62 +127,176 @@ CREATE INDEX idx_logs_patient ON public.activity_logs(patient_id);
 CREATE INDEX idx_logs_date ON public.activity_logs(fecha_hora_inicio);
 CREATE INDEX idx_pain_log ON public.pain_events(activity_log_id);
 
--- TRIGGER FUNCTION: Calculate Health Metrics (IMC & FC Max)
+-- New Indices for Video Module
+CREATE INDEX idx_exercise_sessions_patient_date ON public.exercise_session_logs(patient_id, fecha_realizacion DESC);
+CREATE INDEX idx_exercise_assignments_patient ON public.patient_exercise_assignments(patient_id) WHERE activo = TRUE;
+CREATE INDEX idx_videos_orden ON public.exercise_videos(numero_orden);
+
+-- ==========================================
+-- MATERIALIZED VIEW: COMPLIANCE
+-- ==========================================
+CREATE MATERIALIZED VIEW public.patient_exercise_compliance AS
+SELECT 
+    p.id as patient_id,
+    p.nombre_completo,
+    v.titulo as ejercicio,
+    COUNT(DISTINCT DATE_TRUNC('week', esl.fecha_realizacion)) as semanas_activas,
+    COUNT(esl.id) as total_sesiones,
+    ROUND(
+        (COUNT(DISTINCT esl.fecha_realizacion)::DECIMAL / 
+        NULLIF(pea.frecuencia_semanal, 0)) * 100, 
+        2
+    ) as porcentaje_cumplimiento_semanal
+FROM public.users p
+JOIN public.patient_exercise_assignments pea ON p.id = pea.patient_id
+JOIN public.exercise_videos v ON pea.video_id = v.id
+LEFT JOIN public.exercise_session_logs esl ON p.id = esl.patient_id 
+    AND v.id = esl.video_id 
+    AND esl.fecha_realizacion >= CURRENT_DATE - INTERVAL '7 days'
+WHERE p.role = 'paciente' AND pea.activo = TRUE
+GROUP BY p.id, p.nombre_completo, v.titulo, pea.frecuencia_semanal;
+
+-- Unique index to allow concurrent refresh
+CREATE UNIQUE INDEX idx_compliance_view_unique ON public.patient_exercise_compliance(patient_id, ejercicio);
+
+-- ==========================================
+-- LOGIC: TRIGGERS
+-- ==========================================
+
+-- 1. Health Metrics Trigger
 CREATE OR REPLACE FUNCTION calculate_health_metrics()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Calculate Max Heart Rate (220 - Age)
     IF NEW.edad IS NOT NULL THEN
         NEW.frecuencia_cardiaca_maxima := 220 - NEW.edad;
     END IF;
-
-    -- Calculate BMI (Weight / Height^2)
     IF NEW.peso IS NOT NULL AND NEW.estatura IS NOT NULL AND NEW.estatura > 0 THEN
         NEW.imc := ROUND((NEW.peso / (NEW.estatura * NEW.estatura))::numeric, 2);
     END IF;
-
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- TRIGGER: Attach to clinical_profiles
 CREATE TRIGGER update_health_metrics
 BEFORE INSERT OR UPDATE ON public.clinical_profiles
 FOR EACH ROW
 EXECUTE FUNCTION calculate_health_metrics();
 
+-- 2. Compliance View Refresh Trigger
+CREATE OR REPLACE FUNCTION refresh_compliance_view()
+RETURNS TRIGGER AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY public.patient_exercise_compliance;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER refresh_compliance_on_log
+AFTER INSERT OR UPDATE OR DELETE ON public.exercise_session_logs
+FOR EACH STATEMENT
+EXECUTE FUNCTION refresh_compliance_view();
+
+CREATE TRIGGER refresh_compliance_on_assignment
+AFTER INSERT OR UPDATE OR DELETE ON public.patient_exercise_assignments
+FOR EACH STATEMENT
+EXECUTE FUNCTION refresh_compliance_view();
+
+-- ==========================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
+-- ==========================================
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clinical_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.treatment_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pain_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exercise_videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patient_exercise_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exercise_session_logs ENABLE ROW LEVEL SECURITY;
 
--- 1. Users can see their own profile
-CREATE POLICY "Users view own profile" ON public.users
-FOR SELECT USING (auth.uid() = id);
+-- Existing Policies
+CREATE POLICY "Users view own profile" ON public.users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Doctors view patients" ON public.users FOR SELECT USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico') AND role = 'paciente');
+CREATE POLICY "View own clinical profile" ON public.clinical_profiles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Doctors view clinical profiles" ON public.clinical_profiles FOR SELECT USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico'));
+CREATE POLICY "Patient manages own logs" ON public.activity_logs FOR ALL USING (auth.uid() = patient_id);
+CREATE POLICY "Doctors view logs" ON public.activity_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico'));
 
--- 2. Doctors can view patients
-CREATE POLICY "Doctors view patients" ON public.users
-FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico') 
-    AND role = 'paciente'
-);
+-- New Video Module Policies
+-- Videos are public read for authenticated users
+CREATE POLICY "Authenticated users view videos" ON public.exercise_videos FOR SELECT TO authenticated USING (true);
 
--- 3. Clinical Profiles: Owner or Doctor
-CREATE POLICY "View own clinical profile" ON public.clinical_profiles
-FOR SELECT USING (auth.uid() = user_id);
+-- Assignments: Patients view own, Doctors manage all
+CREATE POLICY "Patients view assignments" ON public.patient_exercise_assignments FOR SELECT USING (auth.uid() = patient_id);
+CREATE POLICY "Doctors manage assignments" ON public.patient_exercise_assignments FOR ALL USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico'));
 
-CREATE POLICY "Doctors view clinical profiles" ON public.clinical_profiles
-FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico')
-);
+-- Session Logs: Patients manage own, Doctors view
+CREATE POLICY "Patients manage session logs" ON public.exercise_session_logs FOR ALL USING (auth.uid() = patient_id);
+CREATE POLICY "Doctors view session logs" ON public.exercise_session_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico'));
 
--- 4. Activity Logs: Patient creates/reads own, Doctors read
-CREATE POLICY "Patient manages own logs" ON public.activity_logs
-FOR ALL USING (auth.uid() = patient_id);
+-- ==========================================
+-- DATA SEED: 8 EXERCISE VIDEOS
+-- ==========================================
+INSERT INTO public.exercise_videos (numero_orden, titulo, youtube_video_id, youtube_url, tipo_ejercicio, grupos_musculares, repeticiones_sugeridas, equipamiento_necesario, nivel_dificultad) VALUES
+(1, 'Variante Pararse y Sentarse', 'O7oFiCMN25E', 
+ 'https://www.youtube.com/watch?v=O7oFiCMN25E&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw',
+ 'fuerza_eeii', 
+ ARRAY['cuadriceps', 'gluteos', 'isquiotibiales'],
+ '2-3 series de 8-15 repeticiones',
+ ARRAY['silla'],
+ 'principiante'),
 
-CREATE POLICY "Doctors view logs" ON public.activity_logs
-FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'medico')
-);
+(2, 'Remo con Banda Elástica', 'J3VFboUbubo',
+ 'https://www.youtube.com/watch?v=J3VFboUbubo&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=2',
+ 'resistencia',
+ ARRAY['dorsal', 'trapecio', 'romboides'],
+ '2-3 series de 10-15 repeticiones',
+ ARRAY['banda_elastica'],
+ 'intermedio'),
+
+(3, 'Pararse y Sentarse', 'gWdgSzPrncU',
+ 'https://www.youtube.com/watch?v=gWdgSzPrncU&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=3',
+ 'fuerza_eeii',
+ ARRAY['cuadriceps', 'gluteos'],
+ '2-3 series de 8-12 repeticiones',
+ ARRAY['silla'],
+ 'principiante'),
+
+(4, 'Extensión de Glúteo', 'G00dG-33QqA',
+ 'https://www.youtube.com/watch?v=G00dG-33QqA&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=4',
+ 'fuerza_eeii',
+ ARRAY['gluteos', 'isquiotibiales'],
+ '2-3 series de 10-15 repeticiones por pierna',
+ ARRAY['banda_elastica', 'silla'],
+ 'intermedio'),
+
+(5, 'Extensión de Cuádriceps (Versión 1)', 'pX7DEPwYXEE',
+ 'https://www.youtube.com/watch?v=pX7DEPwYXEE&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=5',
+ 'fuerza_eeii',
+ ARRAY['cuadriceps'],
+ '2-3 series de 10-15 repeticiones',
+ ARRAY['banda_elastica', 'silla'],
+ 'principiante'),
+
+(6, 'Extensión de Cuádriceps (Versión 2)', 'zEa1Eq3yIsw',
+ 'https://www.youtube.com/watch?v=zEa1Eq3yIsw&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=6',
+ 'fuerza_eeii',
+ ARRAY['cuadriceps'],
+ '2-3 series de 10-15 repeticiones',
+ ARRAY['tobilleras', 'silla'],
+ 'intermedio'),
+
+(7, 'Elevación de Talones', '0caP82ZUo1I',
+ 'https://www.youtube.com/watch?v=0caP82ZUo1I&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=7',
+ 'fuerza_eeii',
+ ARRAY['pantorrillas', 'gemelos'],
+ '2-3 series de 15-20 repeticiones',
+ ARRAY['silla'],
+ 'principiante'),
+
+(8, 'Curl de Bíceps (Flexión de Codo)', '-FNnffnCPxE',
+ 'https://www.youtube.com/watch?v=-FNnffnCPxE&list=PLzfvYX2AWOMQbgL7_d0wlgA0u2QJX2YNw&index=8',
+ 'resistencia',
+ ARRAY['biceps', 'antebrazo'],
+ '2-3 series de 10-15 repeticiones',
+ ARRAY['banda_elastica', 'mancuernas'],
+ 'principiante');

@@ -8,6 +8,7 @@ import { PatientHome } from './views/PatientHome';
 import { WalkSession } from './views/WalkSession';
 import { Nutrition } from './views/Nutrition';
 import { DoctorDashboard } from './views/DoctorDashboard';
+import { ExerciseLibrary } from './views/ExerciseLibrary';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -108,6 +109,7 @@ export default function App() {
           {view === 'tracker' && (
             <WalkSession user={user} onFinish={() => setView('home')} />
           )}
+          {view === 'exercises' && <ExerciseLibrary user={user} />}
           {view === 'nutrition' && <Nutrition />}
         </>
       )}
