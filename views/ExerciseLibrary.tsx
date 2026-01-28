@@ -12,17 +12,15 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [selectedVideoAssignment, setSelectedVideoAssignment] = useState<ExerciseAssignment | null>(null);
 
-  const loadExercises = async () => {
-    // Only show full loading spinner on initial mount, not on refreshes
-    if (assignments.length === 0) setLoading(true);
-    
+  const loadExercises = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.getAssignedExercises(user.id);
       setAssignments(data);
     } catch (error) {
       console.error('Error loading exercises:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -36,7 +34,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     const fullLog: ExerciseSessionLog = {
       patient_id: user.id,
       video_id: selectedVideoAssignment.video_id,
-      fecha_realizacion: '', // Will be filled by API to ensure server consistency
+      fecha_realizacion: '', // La API se encarga de poner la fecha correcta
       timestamp: new Date().toISOString(),
       series_completadas: logData.series_completadas || 0,
       repeticiones_completadas: logData.repeticiones_completadas || 0,
@@ -46,7 +44,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     };
 
     // --- ACTUALIZACIÓN OPTIMISTA (UI Inmediata) ---
-    // Cambiamos el estado visualmente AHORA, sin esperar a la base de datos
+    // Marcamos como completado visualmente ANTES de recibir respuesta del servidor
     const videoId = selectedVideoAssignment.video_id;
     const now = new Date().toISOString();
     
@@ -62,7 +60,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       )
     );
 
-    // Cerramos el modal inmediatamente para fluidez
+    // Cerrar modal inmediatamente
     setSelectedVideoAssignment(null);
 
     // --- GUARDADO EN SEGUNDO PLANO ---
@@ -70,18 +68,19 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
       const result = await api.logExerciseSession(fullLog);
       
       if (result.success) {
-        // Opcional: Feedback sutil o silencioso
-        // Recargamos datos reales para asegurar sincronización con servidor
-        await loadExercises();
+        // Éxito silencioso, recargamos datos en segundo plano para asegurar consistencia
+        // Usamos silent=true para no mostrar spinner de carga y mantener la fluidez
+        await loadExercises(true);
+        // Opcional: alert("¡Ejercicio registrado correctamente! 🎉"); 
       } else {
-        // Si falló el guardado real, revertimos el cambio visual y avisamos
-        alert(result.message || "Error al guardar el progreso.");
-        await loadExercises(); 
+        // Si falla, revertimos y avisamos
+        alert(result.message || "Error al registrar.");
+        await loadExercises(false); // Recarga completa para restaurar estado real
       }
     } catch (error) {
       console.error('Error logging session:', error);
-      alert("Error de conexión. Se intentará guardar nuevamente.");
-      await loadExercises();
+      alert("Error de conexión. Por favor revisa tu internet.");
+      await loadExercises(false);
     }
   };
 
@@ -97,7 +96,7 @@ export const ExerciseLibrary: React.FC<Props> = ({ user }) => {
     return '📦 Equipo';
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Cargando ejercicios...</div>;
+  if (loading && assignments.length === 0) return <div className="p-10 text-center text-gray-500">Cargando ejercicios...</div>;
 
   return (
     <div className="pantalla-ejercicios pb-24">

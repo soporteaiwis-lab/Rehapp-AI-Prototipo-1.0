@@ -9,7 +9,7 @@ const model = 'gemini-3-flash-preview';
 // Helper for consistent Local Date (YYYY-MM-DD) handling across the app
 export const getLocalDateString = (): string => {
     const d = new Date();
-    // Use offset to get local YYYY-MM-DD
+    // Use offset to get local YYYY-MM-DD regardless of browser timezone oddities
     const offset = d.getTimezoneOffset() * 60000; 
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
@@ -135,7 +135,7 @@ export const api = {
     const assignedVideos = MOCK_VIDEOS.filter(v => assignmentsIds.includes(v.id));
 
     return assignedVideos.map(video => {
-        // STRICT STRING COMPARISON FOR IDs
+        // STRICT STRING COMPARISON FOR IDs and BOOLEAN CHECK for completado
         const todaysLog = logs.find(l => 
             String(l.patient_id) === String(patientId) && 
             String(l.video_id) === String(video.id) && 
@@ -171,6 +171,7 @@ export const api = {
     const logs: ExerciseSessionLog[] = logsJson ? JSON.parse(logsJson) : [];
     
     // 3. Remove existing log for this specific exercise today (upsert behavior)
+    // We remove any existing entry for this video+day to avoid duplicates or stale status
     const filteredLogs = logs.filter(l => 
         !(String(l.patient_id) === String(logToSave.patient_id) && 
           String(l.video_id) === String(logToSave.video_id) && 
