@@ -14,6 +14,8 @@ export const WalkSession: React.FC<Props> = ({ user, onFinish }) => {
   const [seconds, setSeconds] = useState(0);
   const [steps, setSteps] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isFinished, setIsFinished] = useState(false); // New state for summary screen
+  const [maxPainReached, setMaxPainReached] = useState(0);
   
   // UI State
   const [showPainModal, setShowPainModal] = useState(false);
@@ -65,16 +67,23 @@ export const WalkSession: React.FC<Props> = ({ user, onFinish }) => {
         date: new Date().toISOString(),
         durationSeconds: seconds,
         steps: steps,
-        painLevel: 0, // Default if stopped manually without pain
+        painLevel: maxPainReached, 
         stoppedDueToPain: false
     };
     await storageService.saveSession(session);
-    onFinish();
+    
+    // Switch to summary view instead of exiting immediately
+    setIsFinished(true);
   };
 
   // Lógica "Pantalla 4" & API Call
   const manejarDolor = async (nivelEVA: number) => {
     if (!sessionId) return;
+    
+    // Update max pain tracked
+    if (nivelEVA > maxPainReached) {
+        setMaxPainReached(nivelEVA);
+    }
     
     // Stop timer while processing
     stopTimer();
@@ -119,6 +128,45 @@ export const WalkSession: React.FC<Props> = ({ user, onFinish }) => {
         alert("Error de conexión");
     }
   };
+
+  // PANTALLA DE RESUMEN (FINAL)
+  if (isFinished) {
+      return (
+          <div className="flex flex-col h-full items-center justify-center p-6 bg-white animate-fade-in">
+              <div className="text-6xl mb-4">🎉</div>
+              <h2 className="text-3xl font-extrabold text-blue-900 mb-2">¡Sesión Terminada!</h2>
+              <p className="text-gray-500 mb-8 font-semibold">Excelente trabajo hoy.</p>
+
+              <div className="w-full max-w-sm space-y-4 mb-8">
+                  <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                      <span className="text-gray-600 font-bold">⏱️ Tiempo</span>
+                      <span className="text-2xl font-bold text-gray-800">{formatTime(seconds)} min</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                      <span className="text-gray-600 font-bold">👣 Pasos</span>
+                      <span className="text-2xl font-bold text-gray-800">{steps}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                      <span className="text-gray-600 font-bold">📏 Distancia</span>
+                      <span className="text-2xl font-bold text-gray-800">{Math.floor(steps * 0.7)} m</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border">
+                      <span className="text-gray-600 font-bold">⚠️ Dolor Máx</span>
+                      <span className={`text-2xl font-bold ${maxPainReached >= 5 ? 'text-red-500' : 'text-green-500'}`}>
+                        EVA {maxPainReached}
+                      </span>
+                  </div>
+              </div>
+
+              <button 
+                className="w-full max-w-sm py-4 bg-blue-600 text-white font-bold text-xl rounded-xl shadow-lg active:scale-95 transition-transform"
+                onClick={onFinish}
+              >
+                  Volver al Inicio
+              </button>
+          </div>
+      )
+  }
 
   // PANTALLA DE BLOQUEO (High Pain)
   if (showBlockScreen) {

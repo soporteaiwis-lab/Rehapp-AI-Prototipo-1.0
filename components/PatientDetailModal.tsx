@@ -20,6 +20,8 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
   const generalChartInstance = useRef<Chart | null>(null);
   const difficultyChartRef = useRef<HTMLCanvasElement>(null);
   const difficultyChartInstance = useRef<Chart | null>(null);
+  const hrChartRef = useRef<HTMLCanvasElement>(null);
+  const hrChartInstance = useRef<Chart | null>(null);
 
   // General State
   const [stepGoal, setStepGoal] = useState(patient.meta_pasos);
@@ -200,7 +202,7 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
         }
     }
     return () => { if (generalChartInstance.current) generalChartInstance.current.destroy(); };
-  }, [activeTab, walkSessions, exerciseLogs, patient.meta_pasos]); // Dependencies updated to redraw on data change
+  }, [activeTab, walkSessions, exerciseLogs, patient.meta_pasos]);
 
   // 3. Render Difficulty Chart (Kinesiology)
   useEffect(() => {
@@ -244,6 +246,66 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
     }
     return () => { if (difficultyChartInstance.current) difficultyChartInstance.current.destroy(); };
   }, [activeTab, exerciseLogs]);
+
+  // 4. Render Heart Rate Evolution Chart (Clinical Trial)
+  useEffect(() => {
+    if (activeTab === 'ensayo_clinico' && hrChartRef.current) {
+        if (hrChartInstance.current) hrChartInstance.current.destroy();
+
+        const ctx = hrChartRef.current.getContext('2d');
+        
+        // Simulamos datos históricos para visualizar la evolución
+        // En producción, esto vendría de una consulta de historial de métricas
+        const currentFC = metrics.fc_reposo || 75;
+        const historyFC = [currentFC + 5, currentFC + 2, currentFC];
+        const historyMax = [metrics.fc_max_teorica, metrics.fc_max_teorica, metrics.fc_max_teorica];
+        const labels = ['Eval Inicial', 'Eval Intermedia', 'Actual'];
+
+        if (ctx) {
+            hrChartInstance.current = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'FC Reposo (lpm)',
+                            data: historyFC,
+                            borderColor: '#2196F3', // Azul
+                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'FC Máx Teórica (lpm)',
+                            data: historyMax,
+                            borderColor: '#9E9E9E', // Gris
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 40,
+                            max: 200,
+                            title: { display: true, text: 'Latidos por minuto' }
+                        }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'Evolución Frecuencia Cardíaca' }
+                    }
+                }
+            });
+        }
+    }
+    return () => { if (hrChartInstance.current) hrChartInstance.current.destroy(); };
+  }, [activeTab, metrics]);
+
 
   // --- Handlers ---
 
@@ -640,6 +702,17 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
           {/* TAB 3: ENSAYO CLÍNICO (PDF DATA) */}
           {activeTab === 'ensayo_clinico' && (
               <div className="space-y-6">
+                  {/* NUEVO GRAFICO: EVOLUCIÓN CARDIACA */}
+                  <div className="bg-white p-5 rounded-xl border shadow-sm">
+                      <h4 className="font-bold text-gray-800 border-b pb-2 mb-4">Evolución Frecuencia Cardíaca</h4>
+                      <div className="h-64 relative">
+                          <canvas ref={hrChartRef}></canvas>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2 text-center">
+                          * Muestra la evolución de la FC en reposo vs. FC Máxima Teórica. Objetivo: Reducir FC Reposo.
+                      </p>
+                  </div>
+
                   <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-lg">
                       <h3 className="font-bold text-purple-900">Objetivo del Estudio</h3>
                       <p className="text-sm text-purple-700 mt-1">

@@ -12,6 +12,7 @@ export const PatientHome: React.FC<Props> = ({ user, setView }) => {
   const [sessions, setSessions] = useState<WalkSession[]>([]);
   const [exerciseLogs, setExerciseLogs] = useState<ExerciseSessionLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingExercisesCount, setPendingExercisesCount] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
@@ -19,6 +20,12 @@ export const PatientHome: React.FC<Props> = ({ user, setView }) => {
         const walks = await storageService.getSessionsByPatient(user.id);
         const logs = await api.getPatientExerciseLogs(user.id);
         
+        // Calcular ejercicios asignados vs completados
+        const assignments = await api.getAssignedExercises(user.id);
+        const completedCount = assignments.filter(a => a.completed_today).length;
+        const totalAssigned = assignments.length;
+        setPendingExercisesCount(Math.max(0, totalAssigned - completedCount));
+
         setSessions(walks);
         setExerciseLogs(logs);
         setLoading(false);
@@ -57,6 +64,23 @@ export const PatientHome: React.FC<Props> = ({ user, setView }) => {
 
   return (
     <div className="space-y-6 pt-2">
+      {/* RECORDATORIO DE EJERCICIOS */}
+      {pendingExercisesCount > 0 && (
+          <div 
+            onClick={() => setView('exercises')}
+            className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg flex items-center justify-between cursor-pointer hover:bg-yellow-100 transition-colors shadow-sm"
+          >
+              <div className="flex items-center gap-3">
+                  <span className="text-2xl animate-bounce">🔔</span>
+                  <div>
+                      <p className="font-bold text-yellow-800 text-sm uppercase">Recordatorio</p>
+                      <p className="font-semibold text-gray-700">Te faltan <span className="text-blue-600 font-bold">{pendingExercisesCount}</span> ejercicios por completar hoy.</p>
+                  </div>
+              </div>
+              <span className="text-yellow-600 text-2xl font-bold">›</span>
+          </div>
+      )}
+
       {/* Saludo Personalizado */}
       <h1 className="text-3xl font-extrabold text-gray-800">
         ¡Hola, {user.name.split(' ')[0]}! 👋
