@@ -257,6 +257,7 @@ export const PatientDetailModal: React.FC<Props> = ({ patient, onClose }) => {
         // Simulamos datos históricos para visualizar la evolución
         // En producción, esto vendría de una consulta de historial de métricas
         const currentFC = metrics.fc_reposo || 75;
+        // Mocking history: Start higher, go lower (improvement)
         const historyFC = [currentFC + 5, currentFC + 2, currentFC];
         const historyMax = [metrics.fc_max_teorica, metrics.fc_max_teorica, metrics.fc_max_teorica];
         const labels = ['Eval Inicial', 'Eval Intermedia', 'Actual'];
